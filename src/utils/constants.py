@@ -6,12 +6,9 @@ class Constants:
 
     class Queries:
 
-        DROP_FRANCHISES_TABLE_SCHEMA_QUERY_STR:str = """
-            DROP TABLE IF EXISTS franchises
-        """
 
         CREATE_FRANCHISES_TABLE_SCHEMA_QUERY_STR:str = """
-            CREATE TABLE IF NOT EXISTS franchises (
+            CREATE TABLE IF NOT EXISTS franchise (
                 id SERIAL PRIMARY KEY,
                 franchise_name VARCHAR(100) NOT NULL,
                 league_name VARCHAR(20) NOT NULL,
@@ -27,4 +24,8 @@ class Constants:
                 conference_title_wins INTEGER NOT NULL,
                 championship_title_wins INTEGER NOT NULL
             )
+        """
+
+        DROP_FRANCHISES_TABLE_SCHEMA_QUERY_STR:str = """
+            DROP TABLE IF EXISTS franchise
         """
