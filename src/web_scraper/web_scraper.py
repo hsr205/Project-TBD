@@ -1,4 +1,3 @@
-import time
 from logging import Logger
 
 from playwright.async_api import async_playwright, Page, Locator
@@ -13,14 +12,15 @@ class WebScraper:
         self._base_url: str = settings.base_url
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
-    async def execute_web_scrapper(self) -> None:
-        num_seconds_to_pause: int = 5
+    async def get_nba_franchise_list(self) -> list[tuple]:
+
+        nba_franchise_tuple_list:list[tuple] = []
 
         async with async_playwright() as playwright_obj:
             self._logger.info("Launching Chromium browser")
             self._logger.info("=" * 100)
 
-            async with await playwright_obj.chromium.launch(headless=False) as browser:
+            async with await playwright_obj.chromium.launch(headless=True) as browser:
                 page: Page = await browser.new_page()
 
                 await self._navigate_to_base_url(page=page)
@@ -29,13 +29,11 @@ class WebScraper:
 
                 table_locator: Locator = await self._locate_active_franchise_table(page=page)
 
-                await self._extract_data_from_active_franchise_table(table_locator=table_locator)
-
-                self._logger.info("Pause starts now...")
-                time.sleep(num_seconds_to_pause)
-                self._logger.info(f"{num_seconds_to_pause} seconds have passed!")
+                nba_franchise_tuple_list = await self._extract_franchise_data_to_list(table_locator=table_locator)
 
             self._logger.info("Browser closed successfully")
+
+        return nba_franchise_tuple_list
 
     async def _navigate_to_base_url(self, page: Page) -> None:
         self._logger.info(f"Navigating to {self._base_url}")
@@ -53,16 +51,15 @@ class WebScraper:
         await table_locator.locator("tbody tr.full_table").first.wait_for()
         return table_locator
 
-    async def _extract_data_from_active_franchise_table(self, table_locator: Locator) -> None:
+    async def _extract_franchise_data_to_list(self, table_locator: Locator) -> list[tuple]:
         locator_list_results: list[Locator] = await table_locator.locator("tbody tr.full_table").all()
 
-        data_scrapped_list: list[list[str]] = []
+        data_scrapped_list: list[tuple] = []
         for table_row in locator_list_results:
-            table_cells_list: list[str] = await table_row.locator("th, td").all_inner_texts()
-            data_scrapped_list.append(table_cells_list)
+            table_cell_tuple: tuple = tuple(await table_row.locator("th, td").all_inner_texts())
+            data_scrapped_list.append(table_cell_tuple)
 
         self._logger.info(f"Scraped {len(data_scrapped_list)} rows")
-        for table_row in data_scrapped_list:
-            self._logger.info(table_row)
-
         self._logger.info("=" * 100)
+
+        return data_scrapped_list
