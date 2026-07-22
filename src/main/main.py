@@ -15,8 +15,10 @@ async def main() -> int:
 
     try:
 
-        await web_scraper.execute_web_scrapper()
-        # database_client.create_franchises_table()
+        nba_franchise_list:list[tuple] = await web_scraper.get_nba_franchise_list()
+        # database_client.create_franchise_table()
+        # database_client.drop_franchise_table()
+        database_client.insert_rows_into_franchises_table(nba_franchise_list=nba_franchise_list)
 
         return 0
 
