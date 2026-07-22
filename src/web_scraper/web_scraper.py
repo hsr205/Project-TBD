@@ -29,7 +29,7 @@ class WebScraper:
 
                 table_locator: Locator = await self._locate_active_franchise_table(page=page)
 
-                await self._extract_data_from_active_franchise_table(page=page, table_locator=table_locator)
+                await self._extract_data_from_active_franchise_table(table_locator=table_locator)
 
                 self._logger.info("Pause starts now...")
                 time.sleep(num_seconds_to_pause)
@@ -53,13 +53,10 @@ class WebScraper:
         await table_locator.locator("tbody tr.full_table").first.wait_for()
         return table_locator
 
-    async def _extract_data_from_active_franchise_table(self, page: Page, table_locator: Locator) -> None:
-        self._logger.info("Extracting Table Headers")
-        headers: list[str] = await table_locator.locator("thead tr th").all_inner_texts()
-
+    async def _extract_data_from_active_franchise_table(self, table_locator: Locator) -> None:
         locator_list_results: list[Locator] = await table_locator.locator("tbody tr.full_table").all()
 
-        data_scrapped_list: list[list[str]] = [headers]
+        data_scrapped_list: list[list[str]] = []
         for table_row in locator_list_results:
             table_cells_list: list[str] = await table_row.locator("th, td").all_inner_texts()
             data_scrapped_list.append(table_cells_list)
