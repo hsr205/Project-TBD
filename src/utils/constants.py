@@ -32,9 +32,11 @@ class Constants:
                 player_name VARCHAR(100) NOT NULL,
                 year_debuted INTEGER NOT NULL,
                 year_retired INTEGER NOT NULL,
-                player_position VARCHAR(5) NOT NULL,
-                birth_date INTEGER NOT NULL,
-                colleges VARCHAR(100) NOT NULL
+                position VARCHAR(5),
+                height VARCHAR(5),
+                weight INTEGER,
+                birth_date VARCHAR(100),
+                colleges VARCHAR(100)
             )
         """
 
@@ -62,11 +64,13 @@ class Constants:
                             player_name,
                             year_debuted,
                             year_retired,
-                            player_position,
+                            position,
+                            height,
+                            weight,
                             birth_date,
                             colleges
                       )
-                        VALUES (%s, %s, %s, %s, %s, %s);
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
 
         DROP_PLAYER_TABLE_SCHEMA_QUERY_STR:str = """
