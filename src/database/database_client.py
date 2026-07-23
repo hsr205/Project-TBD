@@ -45,11 +45,11 @@ class DatabaseClient:
 
         self._logger.info(f"Creating connection to database: {self._settings.db_name}")
         with self._conn.cursor() as cursor:
-            self._logger.info(f"Inserting {len(nba_players_list)} rows in franchises table")
+            self._logger.info(f"Inserting {len(nba_players_list):,} rows in player table")
 
             cursor.executemany(query=Constants.Queries.INSERT_INTO_PLAYER_QUERY_STR, vars_list=nba_players_list)
 
-            self._logger.info(f"Successfully inserted {len(nba_players_list)} rows in franchises table")
+            self._logger.info(f"Successfully inserted {len(nba_players_list)} rows in player table")
             self._conn.commit()
         self._logger.info(f"Closing connection to database: {self._settings.db_name}")
         self._logger.info("=" * 100)
@@ -59,11 +59,11 @@ class DatabaseClient:
 
         self._logger.info(f"Creating connection to database: {self._settings.db_name}")
         with self._conn.cursor() as cursor:
-            self._logger.info(f"Inserting {len(nba_franchise_list)} rows in franchises table")
+            self._logger.info(f"Inserting {len(nba_franchise_list):,} rows in franchise table")
 
             cursor.executemany(query=Constants.Queries.INSERT_INTO_FRANCHISE_QUERY_STR, vars_list=nba_franchise_list)
 
-            self._logger.info(f"Successfully inserted {len(nba_franchise_list)} rows in franchises table")
+            self._logger.info(f"Successfully inserted {len(nba_franchise_list)} rows in franchise table")
             self._conn.commit()
         self._logger.info(f"Closing connection to database: {self._settings.db_name}")
         self._logger.info("=" * 100)
