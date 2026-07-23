@@ -56,9 +56,12 @@ class WebScraper:
 
     async def _navigate_to_players_page(self, page: Page, first_letter_of_last_name_str: str) -> None:
         await page.get_by_role(role="link", name="Players", exact=False).first.click()
-        self._logger.info("Teams Link Clicked")
-        await page.locator(f"a[href='/players/{first_letter_of_last_name_str.lower()}/']").click()
-        self._logger.info(f"Clicked on Players with '{first_letter_of_last_name_str.upper()}' names")
+        self._logger.info("Players Link Clicked")
+        time.sleep(3)
+        await page.locator("#div_alphabet").get_by_role(role="link", name=first_letter_of_last_name_str.upper(),
+                                                        exact=True).click()
+        time.sleep(5)
+        self._logger.info(f"Clicked on Players with last names starting with: '{first_letter_of_last_name_str.upper()}'")
 
     async def _extract_players_data(self, table_locator: Locator) -> list[tuple]:
         await table_locator.wait_for()
@@ -67,13 +70,41 @@ class WebScraper:
 
         players_list: list[tuple] = []
         for row in table_rows_list:
-            cell_tuple: tuple = tuple(await row.locator("th, td").all_inner_texts())
-            players_list.append(cell_tuple)
+            cells: list[str] = await row.locator("th, td").all_inner_texts()
+            sanitized_player_tuple: tuple = self._sanitize_player_row(cells=cells)
+            players_list.append(sanitized_player_tuple)
 
         self._logger.info(f"Scraped {len(players_list)} player rows")
         self._logger.info("=" * 100)
 
         return players_list
+
+    def _sanitize_player_row(self, cells: list[str]) -> tuple:
+
+        # NOTE:
+        # Indices based on Basketball Reference player table column order:
+        # 0: player_name, 1: year_debuted, 2: year_retired, 3: position,
+        # 4: height, 5: weight, 6: birth_date, 7: colleges
+        return (
+            self.to_str_or_none(value=cells[0]),
+            self.to_int_or_none(value=cells[1]),
+            self.to_int_or_none(value=cells[2]),
+            self.to_str_or_none(value=cells[3]),
+            self.to_str_or_none(value=cells[4]),
+            self.to_int_or_none(value=cells[5]),
+            self.to_str_or_none(value=cells[6]),
+            self.to_str_or_none(value=cells[7]),
+        )
+
+    def to_int_or_none(self, value: str) -> int | None:
+        """Convert a string to int, returning None if empty or non-numeric."""
+        stripped = value.strip()
+        return int(stripped) if stripped.lstrip("-").isdigit() else None
+
+    def to_str_or_none(self, value: str) -> str | None:
+        """Convert a string to None if empty."""
+        stripped = value.strip()
+        return stripped if stripped else None
 
     async def get_nba_franchise_list(self) -> list[tuple]:
         nba_franchise_tuple_list: list[tuple] = []
