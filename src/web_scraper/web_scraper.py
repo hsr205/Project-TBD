@@ -1,3 +1,4 @@
+import time
 from logging import Logger
 
 from playwright.async_api import async_playwright, Page, Locator
@@ -12,9 +13,70 @@ class WebScraper:
         self._base_url: str = settings.base_url
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
-    async def get_nba_franchise_list(self) -> list[tuple]:
+    async def get_all_nba_players_list(self) -> list[tuple]:
+        all_nba_players_tuple_list: list[tuple] = []
 
-        nba_franchise_tuple_list:list[tuple] = []
+        async with async_playwright() as playwright_obj:
+            self._logger.info("Launching Chromium browser")
+            self._logger.info("=" * 100)
+
+            async with await playwright_obj.chromium.launch(headless=False) as browser:
+                page: Page = await browser.new_page()
+
+                alphabet_list: list[str] = self._get_alphabet_list()
+
+                for letter in alphabet_list:
+                    await self._navigate_to_base_url(page=page)
+                    await self._navigate_to_players_page(page=page, first_letter_of_last_name_str=letter)
+
+                    table_locator: Locator = page.locator("table#players")
+                    all_nba_players_tuple_list.extend(await self._extract_players_data(table_locator=table_locator))
+                    time.sleep(5)
+
+                self._logger.info(f"Total players gathered: {len(all_nba_players_tuple_list):,}")
+
+            self._logger.info("Browser closed successfully")
+
+        return all_nba_players_tuple_list
+
+    def _get_alphabet_list(self) -> list[str]:
+
+        alphabet_list: list[str] = []
+
+        for element in range(65, 91):
+            ascii_character: str = chr(element)
+
+            if element == 88:
+                self._logger.info("Skipping X last names")
+                continue
+
+            alphabet_list.append(ascii_character)
+
+        return alphabet_list
+
+    async def _navigate_to_players_page(self, page: Page, first_letter_of_last_name_str: str) -> None:
+        await page.get_by_role(role="link", name="Players", exact=False).first.click()
+        self._logger.info("Teams Link Clicked")
+        await page.locator(f"a[href='/players/{first_letter_of_last_name_str.lower()}/']").click()
+        self._logger.info(f"Clicked on Players with '{first_letter_of_last_name_str.upper()}' names")
+
+    async def _extract_players_data(self, table_locator: Locator) -> list[tuple]:
+        await table_locator.wait_for()
+
+        table_rows_list: list[Locator] = await table_locator.locator("tbody tr:not(.thead)").all()
+
+        players_list: list[tuple] = []
+        for row in table_rows_list:
+            cell_tuple: tuple = tuple(await row.locator("th, td").all_inner_texts())
+            players_list.append(cell_tuple)
+
+        self._logger.info(f"Scraped {len(players_list)} player rows")
+        self._logger.info("=" * 100)
+
+        return players_list
+
+    async def get_nba_franchise_list(self) -> list[tuple]:
+        nba_franchise_tuple_list: list[tuple] = []
 
         async with async_playwright() as playwright_obj:
             self._logger.info("Launching Chromium browser")
@@ -41,7 +103,7 @@ class WebScraper:
 
     async def _navigate_to_teams_page(self, page: Page) -> None:
         await page.get_by_role(role="link", name="Teams", exact=False).first.click()
-        self._logger.info("Teams Link Clicked")
+        self._logger.info("Players Link Clicked")
 
     async def _locate_active_franchise_table(self, page: Page) -> Locator:
         await page.get_by_role(role="table", name="Active Franchises Table").get_by_label(
@@ -54,12 +116,12 @@ class WebScraper:
     async def _extract_franchise_data_to_list(self, table_locator: Locator) -> list[tuple]:
         locator_list_results: list[Locator] = await table_locator.locator("tbody tr.full_table").all()
 
-        data_scrapped_list: list[tuple] = []
+        franchise_list: list[tuple] = []
         for table_row in locator_list_results:
             table_cell_tuple: tuple = tuple(await table_row.locator("th, td").all_inner_texts())
-            data_scrapped_list.append(table_cell_tuple)
+            franchise_list.append(table_cell_tuple)
 
-        self._logger.info(f"Scraped {len(data_scrapped_list)} rows")
+        self._logger.info(f"Scraped {len(franchise_list)} rows")
         self._logger.info("=" * 100)
 
-        return data_scrapped_list
+        return franchise_list
