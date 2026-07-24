@@ -18,14 +18,14 @@ class DataLoader:
 
     async def load_data_into_table(self, insert_query_str: str) -> None:
 
-        current_player_dict: dict[int, str] = self._database_client.get_current_player_dict_from_player_table()
+        player_dict: dict[int, str] = self._database_client.get_player_dict_from_player_table()
 
         async with async_playwright() as playwright_obj:
             async with await playwright_obj.chromium.launch(headless=False) as browser:
                 page = await browser.new_page()
                 await self._web_scraper.navigate_to_base_url(page=page)
 
-                for player_id, player_name in current_player_dict.items():
+                for player_id, player_name in player_dict.items():
                     try:
                         stats_list: list[tuple] = await self._web_scraper.scrape_player_stats(
                             page=page,
@@ -40,7 +40,7 @@ class DataLoader:
                         await self._database_client.insert_rows_into_table(
                             player_name_str=player_name,
                             player_regular_season_stats_list=stats_list,
-                            current_player_dict=current_player_dict,
+                            current_player_dict=player_dict,
                             insert_query_str=insert_query_str
                         )
 
