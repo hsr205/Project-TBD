@@ -123,6 +123,51 @@ class Constants:
             )
         """
 
+        CREATE_PLAYER_PLAYOFF_SERIES_STATS_TABLE_QUERY_STR: str = """
+            CREATE TABLE IF NOT EXISTS player_playoff_series_stats (
+                id SERIAL PRIMARY KEY,
+                player_id INTEGER NOT NULL,
+                season VARCHAR(20),
+                age INTEGER,
+                team VARCHAR(10),
+                league VARCHAR(10),
+                round VARCHAR(10),
+                opponent VARCHAR(10),
+                series_result VARCHAR(20),
+                games INTEGER,
+                mp_per_g DECIMAL,
+                pts_per_g DECIMAL,
+                trb_per_g DECIMAL,
+                ast_per_g DECIMAL,
+                stl_per_g DECIMAL,
+                blk_per_g DECIMAL,
+                fg INTEGER,
+                fga INTEGER,
+                fg_pct DECIMAL,
+                fg3 INTEGER,
+                fg3a INTEGER,
+                fg3_pct DECIMAL,
+                fg2 INTEGER,
+                fg2a INTEGER,
+                fg2_pct DECIMAL,
+                efg_pct DECIMAL,
+                ft INTEGER,
+                fta INTEGER,
+                ft_pct DECIMAL,
+                orb INTEGER,
+                drb INTEGER,
+                trb INTEGER,
+                ast INTEGER,
+                stl INTEGER,
+                blk INTEGER,
+                tov INTEGER,
+                pf INTEGER,
+                pts INTEGER,
+                awards VARCHAR(100),
+                CONSTRAINT fk_player_playoff FOREIGN KEY (player_id) REFERENCES player(id) ON DELETE CASCADE
+            )
+        """
+
         ## ======================================================== INSERT TABLE QUERIES ======================================================== ##
 
         INSERT_INTO_PLAYER_REGULAR_SEASON_ADVANCED_STATS_TABLE_STR: str = """
@@ -232,6 +277,50 @@ class Constants:
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
             """
 
+        INSERT_INTO_PLAYER_PLAYOFF_SERIES_STATS_TABLE_STR: str = """
+            INSERT INTO player_playoff_series_stats (
+                player_id,
+                season,
+                age,
+                team,
+                league,
+                round,
+                opponent,
+                series_result,
+                games,
+                mp_per_g,
+                pts_per_g,
+                trb_per_g,
+                ast_per_g,
+                stl_per_g,
+                blk_per_g,
+                fg,
+                fga,
+                fg_pct,
+                fg3,
+                fg3a,
+                fg3_pct,
+                fg2,
+                fg2a,
+                fg2_pct,
+                efg_pct,
+                ft,
+                fta,
+                ft_pct,
+                orb,
+                drb,
+                trb,
+                ast,
+                stl,
+                blk,
+                tov,
+                pf,
+                pts,
+                awards
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """
+
         ## ======================================================== DROP TABLE QUERIES ======================================================== ##
 
         DROP_FRANCHISE_TABLE_SCHEMA_QUERY_STR: str = """
@@ -248,6 +337,10 @@ class Constants:
 
         DROP_PLAYER_REGULAR_SEASON_ADVANCED_TABLE_SCHEMA_QUERY_STR: str = """
              DROP TABLE IF EXISTS player_regular_season_advanced_stats CASCADE
+         """
+
+        DROP_PLAYER_PLAYER_PLAYOFF_SERIES_TABLE_SCHEMA_QUERY_STR: str = """
+             DROP TABLE IF EXISTS player_playoff_series_stats CASCADE
          """
 
         ## ======================================================== FREQUENT QUERIES ======================================================== ##
