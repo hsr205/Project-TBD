@@ -350,3 +350,9 @@ class Constants:
             FROM player
             WHERE year_retired = EXTRACT(YEAR FROM CURRENT_DATE);
         """
+
+        QUERY_PLAYER_TABLE_FOR_RETIRED_PLAYERS: str = """
+            SELECT id, player_name
+            FROM player
+            WHERE year_retired < EXTRACT(YEAR FROM CURRENT_DATE);
+        """
