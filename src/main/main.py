@@ -2,19 +2,21 @@ import asyncio
 from logging import Logger
 
 from src.config.config import Settings
-from src.database.database_client import DatabaseClient
+from src.database.data_loader import DataLoader
 from src.logger.logger import AppLogger
+from src.utils.constants import Constants
 
 
 async def main() -> int:
     logger: Logger = AppLogger().get_logger(class_name=str(__name__))
     settings: Settings = Settings()
-    database_client: DatabaseClient = DatabaseClient(settings=settings)
+
+    data_loader: DataLoader = DataLoader(settings)
 
     try:
 
-        # database_client.create_player_table()
-        await database_client.insert_rows_into_player_table()
+        await data_loader.load_data_into_table(
+            insert_query_str=Constants.Queries.INSERT_INTO_PLAYER_REGULAR_SEASON_ADVANCED_STATS_TABLE_STR)
 
         return 0
 
