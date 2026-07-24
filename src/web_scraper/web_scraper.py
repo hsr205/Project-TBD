@@ -13,7 +13,6 @@ class WebScraper:
 
     def __init__(self, settings: Settings) -> None:
         self._base_url: str = settings.base_url
-        self._current_year: int = datetime.now().year
         self._stats_table_key: str = settings.stats_table_key
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
         self._player_stats_table_mapping_dict: dict[str, list[str, int]] = Constants.PLAYER_STATS_TABLE_MAPPING_DICT
