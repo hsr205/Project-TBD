@@ -44,8 +44,6 @@ class WebScraper:
 
     async def _get_per_season_stats_list(self, table_locator: Locator, player_name: str) -> list[tuple]:
 
-        num_columns_in_table: int = self._player_stats_table_mapping_dict.get(self._stats_table_key, "")[1]
-
         await table_locator.wait_for()
 
         rows: list[Locator] = await table_locator.locator("tbody tr").all()
@@ -54,18 +52,106 @@ class WebScraper:
         for row in rows:
             cells: list[str] = await row.locator("th, td").all_inner_texts()
 
-            if len(cells) < num_columns_in_table:
-                self._logger.info(f"Skipping incomplete row for {player_name}: {cells[0] if cells else 'unknown'}")
+            if not cells or all(c.strip() == "" for c in cells):
+                self._logger.warning("Skipping empty spacer rows")
                 continue
 
+            # Skip "Did not play" rows — they collapse into a single cell
+            if len(cells) < 6:
+                self._logger.info(f"Skipping non-stat row for {player_name}: {cells[0] if cells else 'unknown'}")
+                continue
+
+            # Extract by data-stat attribute so variable column layouts are handled automatically
+            stat_map: dict[str, str] = await self._build_stat_map(row=row)
+
             if self._stats_table_key == "reg-season-qsiB8VY":
-                per_season_stats_list.append(self._sanitize_stats_row(cells=cells))
+                per_season_stats_list.append(self._sanitize_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "reg-season-adv-uBMv04w":
-                per_season_stats_list.append(self._sanitize_advanced_stats_row(cells=cells))
+                per_season_stats_list.append(self._sanitize_advanced_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "playoffs-vsy03Dw":
                 per_season_stats_list.append(self._sanitize_playoff_series_row(cells=cells))
 
         return per_season_stats_list
+
+    async def _build_stat_map(self, row: Locator) -> dict[str, str]:
+        """Build a {data-stat: inner_text} dict for a table row."""
+        cells: list[Locator] = await row.locator("th, td").all()
+        stat_map: dict[str, str] = {}
+        for cell in cells:
+            data_stat: str | None = await cell.get_attribute("data-stat")
+            if data_stat:
+                stat_map[data_stat] = (await cell.inner_text()).strip()
+        return stat_map
+
+    def _sanitize_stats_row_by_stat(self, stat_map: dict[str, str]) -> tuple:
+        """Sanitize a per game stats row using data-stat keys — handles missing columns gracefully."""
+        return (
+            self.to_str_or_none(stat_map.get("year_id", "")),       # season
+            self.to_int_or_none(stat_map.get("age", "")),           # age
+            self.to_str_or_none(stat_map.get("team_name_abbr", "")),# team
+            self.to_str_or_none(stat_map.get("comp_name_abbr", "")),# league
+            self.to_str_or_none(stat_map.get("pos", "")),           # position
+            self.to_int_or_none(stat_map.get("games", "")),         # games_played
+            self.to_int_or_none(stat_map.get("games_started", "")), # games_started
+            self.to_decimal_or_none(stat_map.get("mp_per_g", "")),  # minutes_played_per_game
+            self.to_decimal_or_none(stat_map.get("fg_per_g", "")),  # field_goals_made
+            self.to_decimal_or_none(stat_map.get("fga_per_g", "")), # field_goals_attempted
+            self.to_decimal_or_none(stat_map.get("fg_pct", "")),    # field_goal_percentage
+            self.to_decimal_or_none(stat_map.get("fg3_per_g", "")), # three_pointers_made
+            self.to_decimal_or_none(stat_map.get("fg3a_per_g", "")),# three_pointers_attempted
+            self.to_decimal_or_none(stat_map.get("fg3_pct", "")),   # three_point_percentage
+            self.to_decimal_or_none(stat_map.get("fg2_per_g", "")), # two_pointers_made
+            self.to_decimal_or_none(stat_map.get("fg2a_per_g", "")),# two_pointers_attempted
+            self.to_decimal_or_none(stat_map.get("fg2_pct", "")),   # two_point_percentage
+            self.to_decimal_or_none(stat_map.get("efg_pct", "")),   # effective_field_goal_percentage
+            self.to_decimal_or_none(stat_map.get("ft_per_g", "")),  # free_throws_made
+            self.to_decimal_or_none(stat_map.get("fta_per_g", "")), # free_throws_attempted
+            self.to_decimal_or_none(stat_map.get("ft_pct", "")),    # free_throw_percentage
+            self.to_decimal_or_none(stat_map.get("orb_per_g", "")), # offensive_rebounds
+            self.to_decimal_or_none(stat_map.get("drb_per_g", "")), # defensive_rebounds
+            self.to_decimal_or_none(stat_map.get("trb_per_g", "")), # rebound_avg
+            self.to_decimal_or_none(stat_map.get("ast_per_g", "")), # assist_avg
+            self.to_decimal_or_none(stat_map.get("stl_per_g", "")), # steal_avg
+            self.to_decimal_or_none(stat_map.get("blk_per_g", "")), # block_avg
+            self.to_decimal_or_none(stat_map.get("tov_per_g", "")), # turnover_avg
+            self.to_decimal_or_none(stat_map.get("pf_per_g", "")),  # personal_foul_avg
+            self.to_decimal_or_none(stat_map.get("pts_per_g", "")), # point_avg
+            self.to_str_or_none(stat_map.get("awards", "")),        # awards
+        )
+
+    def _sanitize_advanced_stats_row_by_stat(self, stat_map: dict[str, str]) -> tuple:
+        """Sanitize an advanced stats row using data-stat keys — handles missing columns gracefully."""
+        return (
+            self.to_str_or_none(stat_map.get("year_id", "")),
+            self.to_int_or_none(stat_map.get("age", "")),
+            self.to_str_or_none(stat_map.get("team_name_abbr", "")),
+            self.to_str_or_none(stat_map.get("comp_name_abbr", "")),
+            self.to_str_or_none(stat_map.get("pos", "")),
+            self.to_int_or_none(stat_map.get("games", "")),
+            self.to_int_or_none(stat_map.get("games_started", "")),
+            self.to_int_or_none(stat_map.get("mp", "")),
+            self.to_decimal_or_none(stat_map.get("per", "")),
+            self.to_decimal_or_none(stat_map.get("ts_pct", "")),
+            self.to_decimal_or_none(stat_map.get("fg3a_per_fga_pct", "")),
+            self.to_decimal_or_none(stat_map.get("fta_per_fga_pct", "")),
+            self.to_decimal_or_none(stat_map.get("orb_pct", "")),
+            self.to_decimal_or_none(stat_map.get("drb_pct", "")),
+            self.to_decimal_or_none(stat_map.get("trb_pct", "")),
+            self.to_decimal_or_none(stat_map.get("ast_pct", "")),
+            self.to_decimal_or_none(stat_map.get("stl_pct", "")),
+            self.to_decimal_or_none(stat_map.get("blk_pct", "")),
+            self.to_decimal_or_none(stat_map.get("tov_pct", "")),
+            self.to_decimal_or_none(stat_map.get("usg_pct", "")),
+            self.to_decimal_or_none(stat_map.get("ows", "")),
+            self.to_decimal_or_none(stat_map.get("dws", "")),
+            self.to_decimal_or_none(stat_map.get("ws", "")),
+            self.to_decimal_or_none(stat_map.get("ws_per_48", "")),
+            self.to_decimal_or_none(stat_map.get("obpm", "")),
+            self.to_decimal_or_none(stat_map.get("dbpm", "")),
+            self.to_decimal_or_none(stat_map.get("bpm", "")),
+            self.to_decimal_or_none(stat_map.get("vorp", "")),
+            self.to_str_or_none(stat_map.get("awards", "")),
+        )
 
     async def _navigate_to_player_page(self, page: Page, player_name: str) -> None:
 
@@ -96,7 +182,7 @@ class WebScraper:
                     await self._navigate_to_players_page(page=page, first_letter_of_last_name_str=letter)
 
                     all_nba_players_tuple_list.extend(await self._extract_players_data(page=page))
-                    time.sleep(5)
+                    time.sleep(1)
 
                 self._logger.info(f"Total players gathered: {len(all_nba_players_tuple_list):,}")
 
@@ -107,10 +193,10 @@ class WebScraper:
     async def _navigate_to_players_page(self, page: Page, first_letter_of_last_name_str: str) -> None:
         await page.get_by_role(role="link", name="Players", exact=False).first.click()
         self._logger.info("Players Link Clicked")
-        time.sleep(3)
+        time.sleep(1)
         await page.locator("#div_alphabet").get_by_role(role="link", name=first_letter_of_last_name_str.upper(),
                                                         exact=True).click()
-        time.sleep(5)
+        time.sleep(1)
         self._logger.info(
             f"Clicked on Players with last names starting with: '{first_letter_of_last_name_str.upper()}'")
 
@@ -125,6 +211,7 @@ class WebScraper:
         players_list: list[tuple] = []
         for row in table_rows_list:
             cells: list[str] = await row.locator("th, td").all_inner_texts()
+            cells[0] = cells[0].replace("*", "")
             sanitized_player_tuple: tuple = self._sanitize_player_row(cells=cells)
             players_list.append(sanitized_player_tuple)
 
