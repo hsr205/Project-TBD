@@ -65,7 +65,7 @@ class WebScraper:
 
     async def _get_per_season_stats_list(self, table_locator: Locator, search_name: str) -> list[tuple]:
 
-        await table_locator.wait_for()
+        await table_locator.wait_for(timeout=15)
 
         rows: list[Locator] = await table_locator.locator("tbody tr").all()
 
@@ -112,7 +112,7 @@ class WebScraper:
         await page.locator("input[name='search']").fill(search_name)
         await asyncio.sleep(1)
         suggestion_locator: Locator = page.locator(".ac-dataset-bbr__players .ac-suggestion").first
-        await suggestion_locator.wait_for(state="visible")
+        await suggestion_locator.wait_for(state="visible", timeout=15)
         await asyncio.sleep(1)
         await suggestion_locator.click()
         self._logger.info(f"Navigating to {search_name}'s stats page")
@@ -123,7 +123,7 @@ class WebScraper:
         await page.locator("input[name='search']").fill(franchise_name)
         await asyncio.sleep(1)
         suggestion_locator: Locator = page.locator(".ac-dataset-bbr__players .ac-suggestion").first
-        await suggestion_locator.wait_for(state="visible")
+        await suggestion_locator.wait_for(state="visible", timeout=15)
         await asyncio.sleep(1)
         await suggestion_locator.click()
         self._logger.info(f"Navigating to {franchise_name}'s stats page")
@@ -168,7 +168,7 @@ class WebScraper:
 
         table_locator: Locator = page.locator("table#players")
 
-        await table_locator.wait_for()
+        await table_locator.wait_for(timeout=15)
 
         table_rows_list: list[Locator] = await table_locator.locator("tbody tr:not(.thead)").all()
 
@@ -219,7 +219,7 @@ class WebScraper:
             text="Franchise").first.click()
         self._logger.info("Located Active Franchises Table")
         table_locator: Locator = page.get_by_role(role="table", name="Active Franchises Table")
-        await table_locator.locator("tbody tr.full_table").first.wait_for()
+        await table_locator.locator("tbody tr.full_table").first.wait_for(timeout=15)
         return table_locator
 
     async def _extract_franchise_data_to_list(self, table_locator: Locator) -> list[tuple]:
