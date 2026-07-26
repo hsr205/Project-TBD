@@ -4,10 +4,47 @@ class Constants:
     LOGGER_COLOR_ORANGE: str = "\033[33m"
     LOGGER_COLOR_DARK_RED: str = "\033[31m"
 
+    POOL_MIN_CONNECTIONS: int = 1
+    POOL_MAX_CONNECTIONS: int = 5
+
     PLAYER_STATS_TABLE_MAPPING_DICT: dict[str, list[str, int]] = {
         "reg-season-qsiB8VY": ["table#per_game_stats", 31],
         "reg-season-adv-uBMv04w": ["table#advanced", 29],
         "playoffs-vsy03Dw": ["table#playoffs_series", 37],
+        "franchise-roBWT3o": ["table#", 17]
+    }
+
+    TEAM_ABBREVIATION_DICT: dict[str, str] = {
+        "Atlanta Hawks": "ATL",
+        "Boston Celtics": "BOS",
+        "Brooklyn Nets": "BKN",
+        "Charlotte Hornets": "CHA",
+        "Chicago Bulls": "CHI",
+        "Cleveland Cavaliers": "CLE",
+        "Dallas Mavericks": "DAL",
+        "Denver Nuggets": "DEN",
+        "Detroit Pistons": "DET",
+        "Golden State Warriors": "GSW",
+        "Houston Rockets": "HOU",
+        "Indiana Pacers": "IND",
+        "LA Clippers": "LAC",
+        "Los Angeles Lakers": "LAL",
+        "Memphis Grizzlies": "MEM",
+        "Miami Heat": "MIA",
+        "Milwaukee Bucks": "MIL",
+        "Minnesota Timberwolves": "MIN",
+        "New Orleans Pelicans": "NOP",
+        "New York Knicks": "NYK",
+        "Oklahoma City Thunder": "OKC",
+        "Orlando Magic": "ORL",
+        "Philadelphia 76ers": "PHI",
+        "Phoenix Suns": "PHX",
+        "Portland Trail Blazers": "POR",
+        "Sacramento Kings": "SAC",
+        "San Antonio Spurs": "SAS",
+        "Toronto Raptors": "TOR",
+        "Utah Jazz": "UTA",
+        "Washington Wizards": "WAS",
     }
 
     class Queries:
@@ -43,6 +80,31 @@ class Constants:
                 weight INTEGER,
                 birth_date VARCHAR(100),
                 colleges VARCHAR(100)
+            )
+        """
+
+        CREATE_FRANCHISE_PER_SEASON_STATS_TABLE_QUERY_STR: str = """
+            CREATE TABLE IF NOT EXISTS franchise_per_season_stats (
+                id SERIAL PRIMARY KEY,
+                franchise_id INTEGER NOT NULL,
+                season VARCHAR(20),
+                league VARCHAR(20),
+                team_name VARCHAR(100),
+                wins INTEGER,
+                losses INTEGER,
+                win_loss_pct DECIMAL,
+                finish VARCHAR(20),
+                srs DECIMAL,
+                pace DECIMAL,
+                pace_rel DECIMAL,
+                off_rtg DECIMAL,
+                off_rtg_rel DECIMAL,
+                def_rtg DECIMAL,
+                def_rtg_rel DECIMAL,
+                playoffs VARCHAR(200),
+                coaches VARCHAR(500),
+                top_ws VARCHAR(100),
+                CONSTRAINT fk_franchise FOREIGN KEY (franchise_id) REFERENCES franchise(id) ON DELETE CASCADE
             )
         """
 
@@ -244,7 +306,7 @@ class Constants:
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
 
-        INSERT_INTO_FRANCHISE_QUERY_STR: str = """
+        INSERT_INTO_FRANCHISE_TABLE_QUERY_STR: str = """
                       INSERT INTO franchise (
                         franchise_name,
                         league_name,
@@ -321,6 +383,30 @@ class Constants:
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
 
+        INSERT_INTO_FRANCHISE_PER_SEASON_STATS_TABLE_STR: str = """
+            INSERT INTO franchise_per_season_stats (
+                franchise_id,
+                season,
+                league,
+                team_name,
+                wins,
+                losses,
+                win_loss_pct,
+                finish,
+                srs,
+                pace,
+                pace_rel,
+                off_rtg,
+                off_rtg_rel,
+                def_rtg,
+                def_rtg_rel,
+                playoffs,
+                coaches,
+                top_ws
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """
+
         ## ======================================================== DROP TABLE QUERIES ======================================================== ##
 
         DROP_FRANCHISE_TABLE_SCHEMA_QUERY_STR: str = """
@@ -351,8 +437,21 @@ class Constants:
             WHERE year_retired = EXTRACT(YEAR FROM CURRENT_DATE);
         """
 
-        QUERY_PLAYER_TABLE_FOR_RETIRED_PLAYERS: str = """
+        QUERY_PLAYER_TABLE_FOR_ALL_NBA_PLAYERS: str = """
+            SELECT id, player_name
+            FROM player;
+        """
+
+        QUERY_FRANCHISE_TABLE_FOR_CURRENT_FRANCHISES: str = """
+            SELECT id, franchise_name
+            FROM franchise
+        """
+
+        QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYERS: str = """
             SELECT id, player_name
             FROM player
-            WHERE year_retired < EXTRACT(YEAR FROM CURRENT_DATE);
+            WHERE id NOT IN (
+                            SELECT DISTINCT(player_id)
+                            FROM player_regular_season_stats
+                            );
         """
