@@ -3,6 +3,35 @@ class DataCleanser:
     def __init__(self) -> None:
         pass
 
+    def sanitize_franchise_season_row(self, cells: list[str]) -> tuple:
+        # Franchise seasons table column order (19 cols):
+        # Season, Lg, Team, W, L, W/L%, Finish, SRS,
+        # DUMMY (separator),
+        # Pace, Rel Pace, ORtg, Rel ORtg, DRtg, Rel DRtg,
+        # DUMMY (separator),
+        # Playoffs, Coaches, Top WS
+        return (
+            self.to_str_or_none(cells[0]),      # season
+            self.to_str_or_none(cells[1]),      # league
+            self.to_str_or_none(cells[2]),      # team_name
+            self.to_int_or_none(cells[3]),      # wins
+            self.to_int_or_none(cells[4]),      # losses
+            self.to_decimal_or_none(cells[5]),  # win_loss_pct
+            self.to_str_or_none(cells[6]),      # finish
+            self.to_decimal_or_none(cells[7]),  # srs
+            # cells[8] = DUMMY separator — skipped
+            self.to_decimal_or_none(cells[9]),  # pace
+            self.to_decimal_or_none(cells[10]), # pace_rel
+            self.to_decimal_or_none(cells[11]), # off_rtg
+            self.to_decimal_or_none(cells[12]), # off_rtg_rel
+            self.to_decimal_or_none(cells[13]), # def_rtg
+            self.to_decimal_or_none(cells[14]), # def_rtg_rel
+            # cells[15] = DUMMY separator — skipped
+            self.to_str_or_none(cells[16]),     # playoffs
+            self.to_str_or_none(cells[17]),     # coaches
+            self.to_str_or_none(cells[18]),     # top_ws
+        )
+
     def sanitize_playoff_series_row(self, cells: list[str]) -> tuple:
         # Playoff series table column order (37 cols):
         # Season, Age, Team, Lg, Round, Opp, W/L, G,
