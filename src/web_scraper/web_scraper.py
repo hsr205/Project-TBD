@@ -1,5 +1,4 @@
-import time
-from datetime import datetime
+import asyncio
 from logging import Logger
 
 from playwright.async_api import async_playwright, Page, Locator
@@ -7,6 +6,7 @@ from playwright.async_api import async_playwright, Page, Locator
 from src.config.config import Settings
 from src.logger.logger import AppLogger
 from src.utils.constants import Constants
+from src.web_scraper.data_cleanser import DataCleanser
 
 
 class WebScraper:
@@ -14,15 +14,36 @@ class WebScraper:
     def __init__(self, settings: Settings) -> None:
         self._base_url: str = settings.base_url
         self._stats_table_key: str = settings.stats_table_key
+        self._data_cleanser: DataCleanser = DataCleanser()
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
         self._player_stats_table_mapping_dict: dict[str, list[str, int]] = Constants.PLAYER_STATS_TABLE_MAPPING_DICT
 
-    async def scrape_player_stats(self, page: Page, player_name: str) -> list[tuple]:
-        await self._navigate_to_player_page(page=page, player_name=player_name)
-        time.sleep(1)
-        return await self._extract_player_stats_from_html_table(page=page, player_name=player_name)
+    async def scrape_stats(self, page: Page, search_name: str) -> list[tuple]:
+        await self._navigate_to_specified_page(page=page, search_name=search_name)
+        await asyncio.sleep(1)
 
-    async def _extract_player_stats_from_html_table(self, page: Page, player_name: str) -> \
+        if search_name in Constants.TEAM_ABBREVIATION_DICT:
+            team_abbr: str = Constants.TEAM_ABBREVIATION_DICT.get(search_name, "")
+            return await self._extract_franchise_stats_from_html_table(page=page, franchise_name=search_name,
+                                                                       team_abbr=team_abbr)
+
+        return await self._extract_stats_from_html_table(page=page, player_name=search_name)
+
+    async def _extract_franchise_stats_from_html_table(self, page: Page, franchise_name: str, team_abbr: str) -> \
+            list[tuple]:
+
+        table_locator: Locator = page.locator(f"table#{team_abbr}")
+
+        per_season_stats_list: list[tuple] = await self._get_per_season_stats_list(
+            table_locator=table_locator,
+            search_name=franchise_name,
+        )
+        self._logger.info(f"Extracted {len(per_season_stats_list):,} season of data for {franchise_name}")
+        self._logger.info("=" * 100)
+
+        return per_season_stats_list
+
+    async def _extract_stats_from_html_table(self, page: Page, player_name: str) -> \
             list[tuple]:
 
         html_table_name_str: str = self._player_stats_table_mapping_dict.get(self._stats_table_key, "")[0]
@@ -35,14 +56,14 @@ class WebScraper:
 
         per_season_stats_list: list[tuple] = await self._get_per_season_stats_list(
             table_locator=table_locator,
-            player_name=player_name,
+            search_name=player_name,
         )
         self._logger.info(f"Extracted {len(per_season_stats_list):,} season of data for {player_name}")
         self._logger.info("=" * 100)
 
         return per_season_stats_list
 
-    async def _get_per_season_stats_list(self, table_locator: Locator, player_name: str) -> list[tuple]:
+    async def _get_per_season_stats_list(self, table_locator: Locator, search_name: str) -> list[tuple]:
 
         await table_locator.wait_for()
 
@@ -58,18 +79,20 @@ class WebScraper:
 
             # Skip "Did not play" rows — they collapse into a single cell
             if len(cells) < 6:
-                self._logger.info(f"Skipping non-stat row for {player_name}: {cells[0] if cells else 'unknown'}")
+                self._logger.info(f"Skipping non-stat row for {search_name}: {cells[0] if cells else 'unknown'}")
                 continue
 
             # Extract by data-stat attribute so variable column layouts are handled automatically
             stat_map: dict[str, str] = await self._build_stat_map(row=row)
 
             if self._stats_table_key == "reg-season-qsiB8VY":
-                per_season_stats_list.append(self._sanitize_stats_row_by_stat(stat_map=stat_map))
+                per_season_stats_list.append(self._data_cleanser.sanitize_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "reg-season-adv-uBMv04w":
-                per_season_stats_list.append(self._sanitize_advanced_stats_row_by_stat(stat_map=stat_map))
+                per_season_stats_list.append(self._data_cleanser.sanitize_advanced_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "playoffs-vsy03Dw":
-                per_season_stats_list.append(self._sanitize_playoff_series_row(cells=cells))
+                per_season_stats_list.append(self._data_cleanser.sanitize_playoff_series_row(cells=cells))
+            elif self._stats_table_key == "franchise-roBWT3o":
+                per_season_stats_list.append(self._data_cleanser.sanitize_franchise_season_row(cells=cells))
 
         return per_season_stats_list
 
@@ -83,86 +106,27 @@ class WebScraper:
                 stat_map[data_stat] = (await cell.inner_text()).strip()
         return stat_map
 
-    def _sanitize_stats_row_by_stat(self, stat_map: dict[str, str]) -> tuple:
-        """Sanitize a per game stats row using data-stat keys — handles missing columns gracefully."""
-        return (
-            self.to_str_or_none(stat_map.get("year_id", "")),       # season
-            self.to_int_or_none(stat_map.get("age", "")),           # age
-            self.to_str_or_none(stat_map.get("team_name_abbr", "")),# team
-            self.to_str_or_none(stat_map.get("comp_name_abbr", "")),# league
-            self.to_str_or_none(stat_map.get("pos", "")),           # position
-            self.to_int_or_none(stat_map.get("games", "")),         # games_played
-            self.to_int_or_none(stat_map.get("games_started", "")), # games_started
-            self.to_decimal_or_none(stat_map.get("mp_per_g", "")),  # minutes_played_per_game
-            self.to_decimal_or_none(stat_map.get("fg_per_g", "")),  # field_goals_made
-            self.to_decimal_or_none(stat_map.get("fga_per_g", "")), # field_goals_attempted
-            self.to_decimal_or_none(stat_map.get("fg_pct", "")),    # field_goal_percentage
-            self.to_decimal_or_none(stat_map.get("fg3_per_g", "")), # three_pointers_made
-            self.to_decimal_or_none(stat_map.get("fg3a_per_g", "")),# three_pointers_attempted
-            self.to_decimal_or_none(stat_map.get("fg3_pct", "")),   # three_point_percentage
-            self.to_decimal_or_none(stat_map.get("fg2_per_g", "")), # two_pointers_made
-            self.to_decimal_or_none(stat_map.get("fg2a_per_g", "")),# two_pointers_attempted
-            self.to_decimal_or_none(stat_map.get("fg2_pct", "")),   # two_point_percentage
-            self.to_decimal_or_none(stat_map.get("efg_pct", "")),   # effective_field_goal_percentage
-            self.to_decimal_or_none(stat_map.get("ft_per_g", "")),  # free_throws_made
-            self.to_decimal_or_none(stat_map.get("fta_per_g", "")), # free_throws_attempted
-            self.to_decimal_or_none(stat_map.get("ft_pct", "")),    # free_throw_percentage
-            self.to_decimal_or_none(stat_map.get("orb_per_g", "")), # offensive_rebounds
-            self.to_decimal_or_none(stat_map.get("drb_per_g", "")), # defensive_rebounds
-            self.to_decimal_or_none(stat_map.get("trb_per_g", "")), # rebound_avg
-            self.to_decimal_or_none(stat_map.get("ast_per_g", "")), # assist_avg
-            self.to_decimal_or_none(stat_map.get("stl_per_g", "")), # steal_avg
-            self.to_decimal_or_none(stat_map.get("blk_per_g", "")), # block_avg
-            self.to_decimal_or_none(stat_map.get("tov_per_g", "")), # turnover_avg
-            self.to_decimal_or_none(stat_map.get("pf_per_g", "")),  # personal_foul_avg
-            self.to_decimal_or_none(stat_map.get("pts_per_g", "")), # point_avg
-            self.to_str_or_none(stat_map.get("awards", "")),        # awards
-        )
+    async def _navigate_to_specified_page(self, page: Page, search_name: str) -> None:
 
-    def _sanitize_advanced_stats_row_by_stat(self, stat_map: dict[str, str]) -> tuple:
-        """Sanitize an advanced stats row using data-stat keys — handles missing columns gracefully."""
-        return (
-            self.to_str_or_none(stat_map.get("year_id", "")),
-            self.to_int_or_none(stat_map.get("age", "")),
-            self.to_str_or_none(stat_map.get("team_name_abbr", "")),
-            self.to_str_or_none(stat_map.get("comp_name_abbr", "")),
-            self.to_str_or_none(stat_map.get("pos", "")),
-            self.to_int_or_none(stat_map.get("games", "")),
-            self.to_int_or_none(stat_map.get("games_started", "")),
-            self.to_int_or_none(stat_map.get("mp", "")),
-            self.to_decimal_or_none(stat_map.get("per", "")),
-            self.to_decimal_or_none(stat_map.get("ts_pct", "")),
-            self.to_decimal_or_none(stat_map.get("fg3a_per_fga_pct", "")),
-            self.to_decimal_or_none(stat_map.get("fta_per_fga_pct", "")),
-            self.to_decimal_or_none(stat_map.get("orb_pct", "")),
-            self.to_decimal_or_none(stat_map.get("drb_pct", "")),
-            self.to_decimal_or_none(stat_map.get("trb_pct", "")),
-            self.to_decimal_or_none(stat_map.get("ast_pct", "")),
-            self.to_decimal_or_none(stat_map.get("stl_pct", "")),
-            self.to_decimal_or_none(stat_map.get("blk_pct", "")),
-            self.to_decimal_or_none(stat_map.get("tov_pct", "")),
-            self.to_decimal_or_none(stat_map.get("usg_pct", "")),
-            self.to_decimal_or_none(stat_map.get("ows", "")),
-            self.to_decimal_or_none(stat_map.get("dws", "")),
-            self.to_decimal_or_none(stat_map.get("ws", "")),
-            self.to_decimal_or_none(stat_map.get("ws_per_48", "")),
-            self.to_decimal_or_none(stat_map.get("obpm", "")),
-            self.to_decimal_or_none(stat_map.get("dbpm", "")),
-            self.to_decimal_or_none(stat_map.get("bpm", "")),
-            self.to_decimal_or_none(stat_map.get("vorp", "")),
-            self.to_str_or_none(stat_map.get("awards", "")),
-        )
-
-    async def _navigate_to_player_page(self, page: Page, player_name: str) -> None:
-
-        self._logger.info(f"Locating: {player_name}")
-        await page.locator("input[name='search']").fill(player_name)
-        time.sleep(1)
+        self._logger.info(f"Locating: {search_name}")
+        await page.locator("input[name='search']").fill(search_name)
+        await asyncio.sleep(1)
         suggestion_locator: Locator = page.locator(".ac-dataset-bbr__players .ac-suggestion").first
         await suggestion_locator.wait_for(state="visible")
-        time.sleep(1)
+        await asyncio.sleep(1)
         await suggestion_locator.click()
-        self._logger.info(f"Navigating to {player_name}'s stats page")
+        self._logger.info(f"Navigating to {search_name}'s stats page")
+
+    async def _navigate_to_franchise_page(self, page: Page, franchise_name: str) -> None:
+
+        self._logger.info(f"Locating: {franchise_name}")
+        await page.locator("input[name='search']").fill(franchise_name)
+        await asyncio.sleep(1)
+        suggestion_locator: Locator = page.locator(".ac-dataset-bbr__players .ac-suggestion").first
+        await suggestion_locator.wait_for(state="visible")
+        await asyncio.sleep(1)
+        await suggestion_locator.click()
+        self._logger.info(f"Navigating to {franchise_name}'s stats page")
 
     # TODO: Add in a component to bypass ads as they appear during scrapping
     async def get_all_nba_players_list(self) -> list[tuple]:
@@ -182,7 +146,7 @@ class WebScraper:
                     await self._navigate_to_players_page(page=page, first_letter_of_last_name_str=letter)
 
                     all_nba_players_tuple_list.extend(await self._extract_players_data(page=page))
-                    time.sleep(1)
+                    await asyncio.sleep(1)
 
                 self._logger.info(f"Total players gathered: {len(all_nba_players_tuple_list):,}")
 
@@ -193,10 +157,10 @@ class WebScraper:
     async def _navigate_to_players_page(self, page: Page, first_letter_of_last_name_str: str) -> None:
         await page.get_by_role(role="link", name="Players", exact=False).first.click()
         self._logger.info("Players Link Clicked")
-        time.sleep(1)
+        await asyncio.sleep(1)
         await page.locator("#div_alphabet").get_by_role(role="link", name=first_letter_of_last_name_str.upper(),
                                                         exact=True).click()
-        time.sleep(1)
+        await asyncio.sleep(1)
         self._logger.info(
             f"Clicked on Players with last names starting with: '{first_letter_of_last_name_str.upper()}'")
 
@@ -212,7 +176,7 @@ class WebScraper:
         for row in table_rows_list:
             cells: list[str] = await row.locator("th, td").all_inner_texts()
             cells[0] = cells[0].replace("*", "")
-            sanitized_player_tuple: tuple = self._sanitize_player_row(cells=cells)
+            sanitized_player_tuple: tuple = self._data_cleanser.sanitize_player_row(cells=cells)
             players_list.append(sanitized_player_tuple)
 
         self._logger.info(f"Scraped {len(players_list)} player rows")
@@ -285,159 +249,3 @@ class WebScraper:
             alphabet_list.append(ascii_character)
 
         return alphabet_list
-
-    def _sanitize_playoff_series_row(self, cells: list[str]) -> tuple:
-        # Playoff series table column order (37 cols):
-        # Season, Age, Team, Lg, Round, Opp, W/L, G,
-        # Per Game: MP, PTS, TRB, AST, STL, BLK,
-        # Totals: FG, FGA, FG%, 3P, 3PA, 3P%, 2P, 2PA, 2P%, eFG%,
-        #         FT, FTA, FT%, ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS,
-        # Awards
-        return (
-            self.to_str_or_none(cells[0]),  # season
-            self.to_int_or_none(cells[1]),  # age
-            self.to_str_or_none(cells[2]),  # team
-            self.to_str_or_none(cells[3]),  # league
-            self.to_str_or_none(cells[4]),  # round
-            self.to_str_or_none(cells[5]),  # opponent
-            self.to_str_or_none(cells[6]),  # series_result (W/L)
-            self.to_int_or_none(cells[7]),  # games
-            self.to_decimal_or_none(cells[8]),  # mp_per_g
-            self.to_decimal_or_none(cells[9]),  # pts_per_g
-            self.to_decimal_or_none(cells[10]),  # trb_per_g
-            self.to_decimal_or_none(cells[11]),  # ast_per_g
-            self.to_decimal_or_none(cells[12]),  # stl_per_g
-            self.to_decimal_or_none(cells[13]),  # blk_per_g
-            self.to_int_or_none(cells[14]),  # fg
-            self.to_int_or_none(cells[15]),  # fga
-            self.to_decimal_or_none(cells[16]),  # fg_pct
-            self.to_int_or_none(cells[17]),  # fg3
-            self.to_int_or_none(cells[18]),  # fg3a
-            self.to_decimal_or_none(cells[19]),  # fg3_pct
-            self.to_int_or_none(cells[20]),  # fg2
-            self.to_int_or_none(cells[21]),  # fg2a
-            self.to_decimal_or_none(cells[22]),  # fg2_pct
-            self.to_decimal_or_none(cells[23]),  # efg_pct
-            self.to_int_or_none(cells[24]),  # ft
-            self.to_int_or_none(cells[25]),  # fta
-            self.to_decimal_or_none(cells[26]),  # ft_pct
-            self.to_int_or_none(cells[27]),  # orb
-            self.to_int_or_none(cells[28]),  # drb
-            self.to_int_or_none(cells[29]),  # trb
-            self.to_int_or_none(cells[30]),  # ast
-            self.to_int_or_none(cells[31]),  # stl
-            self.to_int_or_none(cells[32]),  # blk
-            self.to_int_or_none(cells[33]),  # tov
-            self.to_int_or_none(cells[34]),  # pf
-            self.to_int_or_none(cells[35]),  # pts
-            self.to_str_or_none(cells[36]),  # awards
-        )
-
-    def _sanitize_advanced_stats_row(self, cells: list[str]) -> tuple:
-        # Advanced table column order (29 cols):
-        # Season, Age, Team, Lg, Pos, G, GS, MP,
-        # PER, TS%, 3PAr, FTr, ORB%, DRB%, TRB%, AST%, STL%, BLK%, TOV%, USG%,
-        # OWS, DWS, WS, WS/48, OBPM, DBPM, BPM, VORP, Awards
-        return (
-            self.to_str_or_none(cells[0]),  # season
-            self.to_int_or_none(cells[1]),  # age
-            self.to_str_or_none(cells[2]),  # team
-            self.to_str_or_none(cells[3]),  # league
-            self.to_str_or_none(cells[4]),  # position
-            self.to_int_or_none(cells[5]),  # games_played
-            self.to_int_or_none(cells[6]),  # games_started
-            self.to_int_or_none(cells[7]),  # minutes_played (total, not per game)
-            self.to_decimal_or_none(cells[8]),  # per
-            self.to_decimal_or_none(cells[9]),  # ts_pct
-            self.to_decimal_or_none(cells[10]),  # three_point_attempt_rate
-            self.to_decimal_or_none(cells[11]),  # free_throw_rate
-            self.to_decimal_or_none(cells[12]),  # orb_pct
-            self.to_decimal_or_none(cells[13]),  # drb_pct
-            self.to_decimal_or_none(cells[14]),  # trb_pct
-            self.to_decimal_or_none(cells[15]),  # ast_pct
-            self.to_decimal_or_none(cells[16]),  # stl_pct
-            self.to_decimal_or_none(cells[17]),  # blk_pct
-            self.to_decimal_or_none(cells[18]),  # tov_pct
-            self.to_decimal_or_none(cells[19]),  # usg_pct
-            self.to_decimal_or_none(cells[20]),  # ows
-            self.to_decimal_or_none(cells[21]),  # dws
-            self.to_decimal_or_none(cells[22]),  # ws
-            self.to_decimal_or_none(cells[23]),  # ws_per_48
-            self.to_decimal_or_none(cells[24]),  # obpm
-            self.to_decimal_or_none(cells[25]),  # dbpm
-            self.to_decimal_or_none(cells[26]),  # bpm
-            self.to_decimal_or_none(cells[27]),  # vorp
-            self.to_str_or_none(cells[28]),  # awards
-        )
-
-    def _sanitize_stats_row(self, cells: list[str]) -> tuple:
-        # Column order: Season, Age, Team, Lg, Pos, G, GS, MP, FG, FGA, FG%, 3P, 3PA, 3P%,
-        #               2P, 2PA, 2P%, eFG%, FT, FTA, FT%, ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS, Awards
-        return (
-            self.to_str_or_none(cells[0]),  # season       VARCHAR
-            self.to_int_or_none(cells[1]),  # age          INTEGER
-            self.to_str_or_none(cells[2]),  # team         VARCHAR
-            self.to_str_or_none(cells[3]),  # league       VARCHAR
-            self.to_str_or_none(cells[4]),  # position     VARCHAR
-            self.to_int_or_none(cells[5]),  # games_played INTEGER
-            self.to_int_or_none(cells[6]),  # games_started INTEGER
-            self.to_decimal_or_none(cells[7]),  # minutes_played_per_game
-            self.to_decimal_or_none(cells[8]),  # field_goals_made
-            self.to_decimal_or_none(cells[9]),  # field_goals_attempted
-            self.to_decimal_or_none(cells[10]),  # field_goal_percentage
-            self.to_decimal_or_none(cells[11]),  # three_pointers_made
-            self.to_decimal_or_none(cells[12]),  # three_pointers_attempted
-            self.to_decimal_or_none(cells[13]),  # three_point_percentage
-            self.to_decimal_or_none(cells[14]),  # two_pointers_made
-            self.to_decimal_or_none(cells[15]),  # two_pointers_attempted
-            self.to_decimal_or_none(cells[16]),  # two_point_percentage
-            self.to_decimal_or_none(cells[17]),  # effective_field_goal_percentage
-            self.to_decimal_or_none(cells[18]),  # free_throws_made
-            self.to_decimal_or_none(cells[19]),  # free_throws_attempted
-            self.to_decimal_or_none(cells[20]),  # free_throw_percentage
-            self.to_decimal_or_none(cells[21]),  # offensive_rebounds
-            self.to_decimal_or_none(cells[22]),  # defensive_rebounds
-            self.to_decimal_or_none(cells[23]),  # rebound_avg
-            self.to_decimal_or_none(cells[24]),  # assist_avg
-            self.to_decimal_or_none(cells[25]),  # steal_avg
-            self.to_decimal_or_none(cells[26]),  # block_avg
-            self.to_decimal_or_none(cells[27]),  # turnover_avg
-            self.to_decimal_or_none(cells[28]),  # personal_foul_avg
-            self.to_decimal_or_none(cells[29]),  # point_avg
-            self.to_str_or_none(cells[30]),  # awards       VARCHAR
-        )
-
-    def _sanitize_player_row(self, cells: list[str]) -> tuple:
-
-        # NOTE:
-        # Indices based on Basketball Reference player table column order:
-        # 0: player_name, 1: year_debuted, 2: year_retired, 3: position,
-        # 4: height, 5: weight, 6: birth_date, 7: colleges
-        return (
-            self.to_str_or_none(value=cells[0]),
-            self.to_int_or_none(value=cells[1]),
-            self.to_int_or_none(value=cells[2]),
-            self.to_str_or_none(value=cells[3]),
-            self.to_str_or_none(value=cells[4]),
-            self.to_int_or_none(value=cells[5]),
-            self.to_str_or_none(value=cells[6]),
-            self.to_str_or_none(value=cells[7]),
-        )
-
-    def to_int_or_none(self, value: str) -> int | None:
-        """Convert a string to int, returning None if empty or non-numeric."""
-        stripped = value.strip()
-        return int(stripped) if stripped.lstrip("-").isdigit() else None
-
-    def to_decimal_or_none(self, value: str) -> float | None:
-        """Convert a string to float, returning None if empty or non-numeric."""
-        stripped = value.strip()
-        try:
-            return float(stripped) if stripped else None
-        except ValueError:
-            return None
-
-    def to_str_or_none(self, value: str) -> str | None:
-        """Convert a string to None if empty."""
-        stripped = value.strip()
-        return stripped if stripped else None
