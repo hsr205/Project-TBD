@@ -11,6 +11,7 @@ class Constants:
         "reg-season-qsiB8VY": ["table#per_game_stats", 31],
         "reg-season-adv-uBMv04w": ["table#advanced", 29],
         "playoffs-vsy03Dw": ["table#playoffs_series", 37],
+        # TODO: Fix this
         "franchise-roBWT3o": ["table#", 17]
     }
 
