@@ -67,12 +67,14 @@ class DatabaseClient:
         self._logger.info(f"Closing connection to database: {self._settings.db_name}")
         self._logger.info("=" * 100)
 
-    def get_current_player_dict_from_player_table(self) -> dict[int, str]:
+    def get_player_dict_from_player_table(self) -> dict[int, str]:
         self._logger.info(f"Creating connection to database: {self._settings.db_name}")
         self._logger.info("=" * 100)
         with self._conn.cursor() as cursor:
             self._logger.info("Querying player table")
-            cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_CURRENT_PLAYERS)
+
+            # TODO: Find a way to do this less manually
+            cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_NBA_PLAYERS)
             player_dict: dict[int, str] = {}
             query_result_list = cursor.fetchall()
 
