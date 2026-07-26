@@ -138,45 +138,32 @@ class DatabaseClient:
     ## ======================================================== INSERT INTO TABLE METHODS ======================================================== ##
 
     async def insert_rows_into_table(self,
-                                     player_name_str: str,
-                                     player_regular_season_stats_list: list[tuple],
-                                     current_player_dict: dict[int, str],
+                                     search_name: str,
+                                     stats_list: list[tuple],
+                                     entity_dict: dict[int, str],
                                      insert_query_str: str) -> None:
-        player_id: int | None = next(
-            (player_id for player_id, name in current_player_dict.items() if name == player_name_str),
+        entity_id: int | None = next(
+            (player_id for player_id, name in entity_dict.items() if name == search_name),
             None)
 
-        if player_id is None:
-            self._logger.warning(f"No player_id found for '{player_name_str}' — skipping stats insert")
+        if entity_id is None:
+            self._logger.warning(f"No entity_id found for '{search_name}' — skipping stats insert")
             return
 
         # Prepend player_id to each stats row tuple
-        rows_with_player_id: list[tuple] = [(player_id, *row) for row in player_regular_season_stats_list]
+        rows_with_entity_id: list[tuple] = [(entity_id, *row) for row in stats_list]
 
         conn: connection = self._get_connection()
         try:
-            self._logger.info(f"Inserting {len(rows_with_player_id):,} rows into table for {player_name_str}")
+            self._logger.info(f"Inserting {len(rows_with_entity_id):,} rows into table for {search_name}")
             with conn.cursor() as cursor:
-                cursor.executemany(query=insert_query_str, vars_list=rows_with_player_id)
+                cursor.executemany(query=insert_query_str, vars_list=rows_with_entity_id)
                 conn.commit()
-            self._logger.info(f"Successfully inserted {len(rows_with_player_id):,} rows into table")
+            self._logger.info(f"Successfully inserted {len(rows_with_entity_id):,} rows into table")
         finally:
             self._release_connection(conn)
         self._logger.info("=" * 100)
 
-    async def insert_rows_into_franchise_per_season_stats_table(self, franchise_name_str: str, stats_list: list[tuple]) -> None:
-
-        conn: connection = self._get_connection()
-        try:
-            self._logger.info(f"Inserting {len(stats_list):,} rows into table for {franchise_name_str}")
-            with conn.cursor() as cursor:
-                cursor.executemany(query=Constants.Queries.INSERT_INTO_FRANCHISE_PER_SEASON_STATS_TABLE_STR,
-                                   vars_list=stats_list)
-                conn.commit()
-            self._logger.info(f"Successfully inserted {len(stats_list):,} rows into table")
-        finally:
-            self._release_connection(conn)
-        self._logger.info("=" * 100)
 
     async def insert_rows_into_player_table(self) -> None:
         nba_players_list: list[tuple] = await self._web_scraper.get_all_nba_players_list()
