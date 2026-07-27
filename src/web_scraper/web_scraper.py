@@ -65,7 +65,7 @@ class WebScraper:
 
     async def _get_per_season_stats_list(self, table_locator: Locator, search_name: str) -> list[tuple]:
 
-        await table_locator.wait_for()
+        await table_locator.wait_for(timeout=5_000)
 
         rows: list[Locator] = await table_locator.locator("tbody tr").all()
 
