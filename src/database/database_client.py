@@ -91,44 +91,22 @@ class DatabaseClient:
             self._release_connection(conn)
         self._logger.info("=" * 100)
 
-    def get_franchise_dict_from_franchise_table(self) -> dict[int, str]:
+    def get_result_dict_from_queried_table(self) -> dict[int, str]:
         conn: connection = self._get_connection()
         try:
-            self._logger.info("Querying player table")
+            self._logger.info("Querying table")
             with conn.cursor() as cursor:
                 # TODO: Find a way to do this less manually
-                cursor.execute(query=Constants.Queries.QUERY_FRANCHISE_TABLE_FOR_CURRENT_FRANCHISES)
+                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYOFF_SEASONS)
                 query_result_list = cursor.fetchall()
 
-            self._logger.info(f"Returned {len(query_result_list):,} rows")
-
-            franchise_dict: dict[int, str] = {
-                element[0]: element[1] for element in query_result_list
-            }
-
-            self._logger.info("Successfully queried player table")
-        finally:
-            self._release_connection(conn)
-        self._logger.info("=" * 100)
-
-        return franchise_dict
-
-    def get_player_dict_from_player_table(self) -> dict[int, str]:
-        conn: connection = self._get_connection()
-        try:
-            self._logger.info("Querying player table")
-            with conn.cursor() as cursor:
-                # TODO: Find a way to do this less manually
-                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_NBA_PLAYERS)
-                query_result_list = cursor.fetchall()
-
-            self._logger.info(f"Returned {len(query_result_list):,} rows")
+            self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
 
             player_dict: dict[int, str] = {
                 element[0]: element[1] for element in query_result_list
             }
 
-            self._logger.info("Successfully queried player table")
+            self._logger.info("Successfully queried table")
         finally:
             self._release_connection(conn)
         self._logger.info("=" * 100)
@@ -143,7 +121,7 @@ class DatabaseClient:
                                      entity_dict: dict[int, str],
                                      insert_query_str: str) -> None:
         entity_id: int | None = next(
-            (player_id for player_id, name in entity_dict.items() if name == search_name),
+            (entity_id for entity_id, name in entity_dict.items() if name == search_name),
             None)
 
         if entity_id is None:
