@@ -32,51 +32,49 @@ class DataCleanser:
             self.to_str_or_none(cells[18]),     # top_ws
         )
 
-    def sanitize_playoff_series_row(self, cells: list[str]) -> tuple:
-        # Playoff series table column order (37 cols):
-        # Season, Age, Team, Lg, Round, Opp, W/L, G,
-        # Per Game: MP, PTS, TRB, AST, STL, BLK,
-        # Totals: FG, FGA, FG%, 3P, 3PA, 3P%, 2P, 2PA, 2P%, eFG%,
-        #         FT, FTA, FT%, ORB, DRB, TRB, AST, STL, BLK, TOV, PF, PTS,
-        # Awards
+    def sanitize_playoff_series_row(self, stat_map: dict[str, str]) -> tuple:
         return (
-            self.to_str_or_none(cells[0]),  # season
-            self.to_int_or_none(cells[1]),  # age
-            self.to_str_or_none(cells[2]),  # team
-            self.to_str_or_none(cells[3]),  # league
-            self.to_str_or_none(cells[4]),  # round
-            self.to_str_or_none(cells[5]),  # opponent
-            self.to_str_or_none(cells[6]),  # series_result (W/L)
-            self.to_int_or_none(cells[7]),  # games
-            self.to_decimal_or_none(cells[8]),  # mp_per_g
-            self.to_decimal_or_none(cells[9]),  # pts_per_g
-            self.to_decimal_or_none(cells[10]),  # trb_per_g
-            self.to_decimal_or_none(cells[11]),  # ast_per_g
-            self.to_decimal_or_none(cells[12]),  # stl_per_g
-            self.to_decimal_or_none(cells[13]),  # blk_per_g
-            self.to_int_or_none(cells[14]),  # fg
-            self.to_int_or_none(cells[15]),  # fga
-            self.to_decimal_or_none(cells[16]),  # fg_pct
-            self.to_int_or_none(cells[17]),  # fg3
-            self.to_int_or_none(cells[18]),  # fg3a
-            self.to_decimal_or_none(cells[19]),  # fg3_pct
-            self.to_int_or_none(cells[20]),  # fg2
-            self.to_int_or_none(cells[21]),  # fg2a
-            self.to_decimal_or_none(cells[22]),  # fg2_pct
-            self.to_decimal_or_none(cells[23]),  # efg_pct
-            self.to_int_or_none(cells[24]),  # ft
-            self.to_int_or_none(cells[25]),  # fta
-            self.to_decimal_or_none(cells[26]),  # ft_pct
-            self.to_int_or_none(cells[27]),  # orb
-            self.to_int_or_none(cells[28]),  # drb
-            self.to_int_or_none(cells[29]),  # trb
-            self.to_int_or_none(cells[30]),  # ast
-            self.to_int_or_none(cells[31]),  # stl
-            self.to_int_or_none(cells[32]),  # blk
-            self.to_int_or_none(cells[33]),  # tov
-            self.to_int_or_none(cells[34]),  # pf
-            self.to_int_or_none(cells[35]),  # pts
-            self.to_str_or_none(cells[36]),  # awards
+            self.to_str_or_none(stat_map.get("year_id")),  # Basketball Reference uses 'year_id' for Season
+            self.to_int_or_none(stat_map.get("age")),
+            self.to_str_or_none(stat_map.get("team_name_abbr")),  # 'team_name_abbr'
+            self.to_str_or_none(stat_map.get("comp_name_abbr")),  # 'comp_name_abbr'
+            self.to_str_or_none(stat_map.get("ps_round")),  # 'ps_round'
+            self.to_str_or_none(stat_map.get("opp_name_abbr")),  # 'opp_name_abbr'
+            self.to_str_or_none(stat_map.get("series_result")),  # 'series_result'
+            self.to_int_or_none(stat_map.get("games")),  # 'games'
+
+            # Per Game
+            self.to_decimal_or_none(stat_map.get("mp_per_g")),
+            self.to_decimal_or_none(stat_map.get("pts_per_g")),
+            self.to_decimal_or_none(stat_map.get("trb_per_g")),
+            self.to_decimal_or_none(stat_map.get("ast_per_g")),
+            self.to_decimal_or_none(stat_map.get("stl_per_g")),
+            self.to_decimal_or_none(stat_map.get("blk_per_g")),
+
+            # Totals
+            self.to_int_or_none(stat_map.get("fg")),
+            self.to_int_or_none(stat_map.get("fga")),
+            self.to_decimal_or_none(stat_map.get("fg_pct")),
+            self.to_int_or_none(stat_map.get("fg3")),
+            self.to_int_or_none(stat_map.get("fg3a")),
+            self.to_decimal_or_none(stat_map.get("fg3_pct")),
+            self.to_int_or_none(stat_map.get("fg2")),
+            self.to_int_or_none(stat_map.get("fg2a")),
+            self.to_decimal_or_none(stat_map.get("fg2_pct")),
+            self.to_decimal_or_none(stat_map.get("efg_pct")),
+            self.to_int_or_none(stat_map.get("ft")),
+            self.to_int_or_none(stat_map.get("fta")),
+            self.to_decimal_or_none(stat_map.get("ft_pct")),
+            self.to_int_or_none(stat_map.get("orb")),
+            self.to_int_or_none(stat_map.get("drb")),
+            self.to_int_or_none(stat_map.get("trb")),
+            self.to_int_or_none(stat_map.get("ast")),
+            self.to_int_or_none(stat_map.get("stl")),
+            self.to_int_or_none(stat_map.get("blk")),
+            self.to_int_or_none(stat_map.get("tov")),
+            self.to_int_or_none(stat_map.get("pf")),
+            self.to_int_or_none(stat_map.get("pts")),
+            self.to_str_or_none(stat_map.get("awards")),
         )
 
     def sanitize_advanced_stats_row(self, cells: list[str]) -> tuple:
@@ -240,21 +238,30 @@ class DataCleanser:
             self.to_str_or_none(stat_map.get("awards", "")),        # awards
         )
 
+    def to_int_or_none(self, value: str | None) -> int | None:
+        """Convert a string to int, returning None if empty, None, or non-numeric."""
+        if not value:
+            return None
+        val_clean = value.strip()
+        if not val_clean:
+            return None
+        return int(val_clean) if val_clean.lstrip("-").isdigit() else None
 
-    def to_int_or_none(self, value: str) -> int | None:
-        """Convert a string to int, returning None if empty or non-numeric."""
-        stripped = value.strip()
-        return int(stripped) if stripped.lstrip("-").isdigit() else None
-
-    def to_decimal_or_none(self, value: str) -> float | None:
-        """Convert a string to float, returning None if empty or non-numeric."""
-        stripped = value.strip()
+    def to_decimal_or_none(self, value: str | None) -> float | None:
+        """Convert a string to float, returning None if empty, None, or non-numeric."""
+        if not value:
+            return None
+        val_clean = value.strip()
+        if not val_clean:
+            return None
         try:
-            return float(stripped) if stripped else None
+            return float(val_clean)
         except ValueError:
             return None
 
-    def to_str_or_none(self, value: str) -> str | None:
-        """Convert a string to None if empty."""
-        stripped = value.strip()
-        return stripped if stripped else None
+    def to_str_or_none(self, value: str | None) -> str | None:
+        """Convert a string to None if empty, whitespace-only, or None."""
+        if not value:
+            return None
+        val_clean = value.strip()
+        return val_clean if val_clean else None
