@@ -11,14 +11,13 @@ class Constants:
         "reg-season-qsiB8VY": ["table#per_game_stats", 31],
         "reg-season-adv-uBMv04w": ["table#advanced", 29],
         "playoffs-vsy03Dw": ["table#playoffs_series", 37],
-        # TODO: Fix this
         "franchise-roBWT3o": ["table#", 17]
     }
 
     TEAM_ABBREVIATION_DICT: dict[str, str] = {
         "Atlanta Hawks": "ATL",
         "Boston Celtics": "BOS",
-        "Brooklyn Nets": "BKN",
+        "Brooklyn Nets": "NJN",
         "Charlotte Hornets": "CHA",
         "Chicago Bulls": "CHI",
         "Cleveland Cavaliers": "CLE",
@@ -28,18 +27,18 @@ class Constants:
         "Golden State Warriors": "GSW",
         "Houston Rockets": "HOU",
         "Indiana Pacers": "IND",
-        "LA Clippers": "LAC",
+        "Los Angeles Clippers": "LAC",
         "Los Angeles Lakers": "LAL",
         "Memphis Grizzlies": "MEM",
         "Miami Heat": "MIA",
         "Milwaukee Bucks": "MIL",
         "Minnesota Timberwolves": "MIN",
-        "New Orleans Pelicans": "NOP",
+        "New Orleans Pelicans": "NOH",
         "New York Knicks": "NYK",
         "Oklahoma City Thunder": "OKC",
         "Orlando Magic": "ORL",
         "Philadelphia 76ers": "PHI",
-        "Phoenix Suns": "PHX",
+        "Phoenix Suns": "PHO",
         "Portland Trail Blazers": "POR",
         "Sacramento Kings": "SAC",
         "San Antonio Spurs": "SAS",
@@ -448,11 +447,31 @@ class Constants:
             FROM franchise
         """
 
+        QUERY_FRANCHISE_TABLE_MISSED_NBA_FRANCHISES: str = """
+                SELECT id, franchise_name
+                FROM franchise
+                WHERE id NOT IN (
+                                SELECT DISTINCT(franchise_id)
+                                FROM franchise_per_season_stats
+                )
+        """
+
         QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYERS: str = """
             SELECT id, player_name
             FROM player
             WHERE id NOT IN (
                             SELECT DISTINCT(player_id)
                             FROM player_regular_season_stats
-                            );
+                            )
         """
+
+        QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYOFF_SEASONS: str = """
+            SELECT id, player_name
+            FROM player
+            WHERE id NOT IN (
+                            SELECT DISTINCT(player_id)
+                            FROM player_playoff_series_stats
+                            )
+            AND year_debuted > 1980
+        """
+
