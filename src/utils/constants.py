@@ -472,6 +472,5 @@ class Constants:
                             SELECT DISTINCT(player_id)
                             FROM player_playoff_series_stats
                             )
-            AND year_debuted > 1980
         """
 
