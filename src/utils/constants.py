@@ -461,8 +461,8 @@ class Constants:
             FROM player
             WHERE id NOT IN (
                             SELECT DISTINCT(player_id)
-                            FROM player_regular_season_stats
-                            )
+                            FROM player_regular_season_advanced_stats
+                            );
         """
 
         QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYOFF_SEASONS: str = """
@@ -473,4 +473,47 @@ class Constants:
                             FROM player_playoff_series_stats
                             )
         """
+
+        QUERY_DATABASE_FOR_ALL_REGULAR_SEASON_CAREER_AVERAGES: str = """
+            SELECT  p_reg.player_id,
+                    p.player_name,
+                    p.position,
+                    p.height,
+                    p.weight,
+                    ROUND(AVG(p_reg.games_played), 1) as career_avg_games_played_per_season,
+                    ROUND(AVG(p_reg.games_started), 1) as career_avg_games_started_per_season,
+                    ROUND(AVG(p_reg.minutes_played_per_game), 1) as career_avg_minutes_played,
+                    ROUND(AVG(p_reg.point_avg), 1) as career_avg_points,
+                    ROUND(AVG(p_reg.rebound_avg), 1) as career_avg_rebounds,
+                    ROUND(AVG(p_reg.free_throws_attempted), 1) as career_avg_free_throws_attempted,
+                    ROUND(AVG(p_reg.offensive_rebounds), 1) as career_avg_offensive_rebounds,
+                    ROUND(AVG(p_reg.defensive_rebounds), 1) as career_avg_defensive_rebounds,
+                    ROUND(AVG(p_reg.assist_avg), 1) as career_avg_assists,
+                    ROUND(AVG(p_reg.steal_avg), 1) as career_avg_steals,
+                    ROUND(AVG(p_reg.block_avg), 1) as career_avg_blocks,
+                    ROUND(AVG(p_reg.turnover_avg), 1) as career_avg_turnovers,
+                    ROUND(AVG(p_reg.field_goals_made), 1) as career_avg_field_goals_made,
+                    ROUND(AVG(p_reg.field_goals_attempted), 1) as career_avg_field_goals_attempted,
+                    ROUND(AVG(p_reg.field_goal_percentage), 1) as career_avg_field_goal_percentage,
+                    ROUND(AVG(p_reg.three_pointers_made), 1) as career_avg_three_pointers_made,
+                    ROUND(AVG(p_reg.three_pointers_attempted), 1) as career_avg_three_point_attempted,
+                    ROUND(AVG(p_reg.three_point_percentage), 1) as career_avg_three_point_percentage,
+                    ROUND(AVG(p_reg.two_pointers_made), 1) as career_avg_two_pointers_made,
+                    ROUND(AVG(p_reg.two_pointers_attempted), 1) as career_avg_two_pointers_attempted,
+                    ROUND(AVG(p_reg.two_point_percentage), 1) as career_avg_two_point_percentage,
+                    ROUND(AVG(p_reg.effective_field_goal_percentage), 1) as career_avg_effective_field_goal_percentage,
+                    ROUND(AVG(p_reg.free_throws_made), 1) as career_avg_free_throws_made,
+                    ROUND(AVG(p_reg.personal_foul_avg), 1) as career_avg_personal_fouls
+            FROM player p
+            LEFT JOIN player_regular_season_stats p_reg ON p.id = p_reg.player_id
+            WHERE p.year_debuted > 1980
+            GROUP BY p_reg.player_id, 
+                     p.player_name,
+                     p.position,
+                     p.height,
+                     p.weight
+            HAVING SUM(p_reg.games_played) > 200
+        """
+
+
 
