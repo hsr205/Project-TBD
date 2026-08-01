@@ -64,35 +64,53 @@ class WebScraper:
         return per_season_stats_list
 
     async def _get_per_season_stats_list(self, table_locator: Locator, search_name: str) -> list[tuple]:
-
-        await table_locator.wait_for(timeout=5_000)
+        await table_locator.wait_for(timeout=1_000)
 
         rows: list[Locator] = await table_locator.locator("tbody tr").all()
 
         per_season_stats_list: list[tuple] = []
         for row in rows:
-            cells: list[str] = await row.locator("th, td").all_inner_texts()
-
-            if not cells or all(c.strip() == "" for c in cells):
-                self._logger.warning("Skipping empty spacer rows")
+            # Check for spacer/partial rows before processing
+            row_class = await row.get_attribute("class") or ""
+            if "spacer" in row_class or "partial_table" in row_class:
                 continue
 
-            # Skip "Did not play" rows — they collapse into a single cell
-            if len(cells) < 6:
-                self._logger.info(f"Skipping non-stat row for {search_name}: {cells[0] if cells else 'unknown'}")
+            # Get all cell elements (Season is <th>, rest are <td>)
+            cell_locators: list[Locator] = await row.locator("th, td").all()
+
+            if not cell_locators:
                 continue
 
-            # Extract by data-stat attribute so variable column layouts are handled automatically
-            stat_map: dict[str, str] = await self._build_stat_map(row=row)
+            # Extract text and data-stat attribute simultaneously from each cell
+            stat_map: dict[str, str] = {}
+            for cell in cell_locators:
+                stat_name = await cell.get_attribute("data-stat")
 
+                cell_inner_text = await cell.inner_text()
+
+                if stat_name:
+                    stat_map[stat_name] = cell_inner_text
+
+            # Skip "Did Not Play" or summary rows that lack essential stats
+            if len(stat_map) < 4 or "year_id" not in stat_map:
+                self._logger.info(f"Skipping non-stat row for {search_name}")
+                continue
+
+            # for key, value in stat_map.items():
+            #     self._logger.info(f"key = {key} -> value = {value}")
+
+            # Pass the map to your sanitizers
             if self._stats_table_key == "reg-season-qsiB8VY":
                 per_season_stats_list.append(self._data_cleanser.sanitize_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "reg-season-adv-uBMv04w":
                 per_season_stats_list.append(self._data_cleanser.sanitize_advanced_stats_row_by_stat(stat_map=stat_map))
             elif self._stats_table_key == "playoffs-vsy03Dw":
-                per_season_stats_list.append(self._data_cleanser.sanitize_playoff_series_row(cells=cells))
-            elif self._stats_table_key == "franchise-roBWT3o":
-                per_season_stats_list.append(self._data_cleanser.sanitize_franchise_season_row(cells=cells))
+                per_season_stats_list.append(self._data_cleanser.sanitize_playoff_series_row(stat_map=stat_map))
+            # elif self._stats_table_key == "franchise-roBWT3o":
+            #     per_season_stats_list.append(self._data_cleanser.sanitize_franchise_season_row(stat_map=stat_map))
+
+        self._logger.info("=" * 100)
+        # self._logger.info(f"per_season_stats_list count = {len(per_season_stats_list)}")
 
         return per_season_stats_list
 
@@ -103,7 +121,10 @@ class WebScraper:
         for cell in cells:
             data_stat: str | None = await cell.get_attribute("data-stat")
             if data_stat:
-                stat_map[data_stat] = (await cell.inner_text()).strip()
+                cell_inner_text = await cell.inner_text()
+
+                stat_map[data_stat] = cell_inner_text
+
         return stat_map
 
     async def _navigate_to_specified_page(self, page: Page, search_name: str) -> None:
