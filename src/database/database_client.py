@@ -94,24 +94,58 @@ class DatabaseClient:
     def get_result_dict_from_queried_table(self) -> dict[int, str]:
         conn: connection = self._get_connection()
         try:
-            self._logger.info("Querying table")
+            self._logger.info("Querying table from SQL database:")
             with conn.cursor() as cursor:
                 # TODO: Find a way to do this less manually
-                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYOFF_SEASONS)
-                query_result_list = cursor.fetchall()
+                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYERS)
+                query_result_list: list[tuple] = cursor.fetchall()
 
             self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
 
             player_dict: dict[int, str] = {
                 element[0]: element[1] for element in query_result_list
             }
-
-            self._logger.info("Successfully queried table")
         finally:
             self._release_connection(conn)
         self._logger.info("=" * 100)
 
         return player_dict
+
+    def get_all_regular_season_career_averages_list(self) -> tuple[list[str], list[tuple]]:
+
+        conn: connection = self._get_connection()
+        try:
+            self._logger.info("Querying table from SQL database:")
+            with conn.cursor() as cursor:
+                # TODO: Find a way to do this less manually
+                cursor.execute(query=Constants.Queries.QUERY_DATABASE_FOR_ALL_REGULAR_SEASON_CAREER_AVERAGES)
+                query_result_list: list[tuple] = cursor.fetchall()
+                column_names_list:list[str] = [col[0] for col in cursor.description]
+
+            self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
+        finally:
+            self._release_connection(conn)
+        self._logger.info("=" * 100)
+
+        return column_names_list, query_result_list
+
+    def get_all_regular_season_advanced_career_averages_list(self) -> tuple[list[str], list[tuple]]:
+
+        conn: connection = self._get_connection()
+        try:
+            self._logger.info("Querying table from SQL database:")
+            with conn.cursor() as cursor:
+                # TODO: Find a way to do this less manually
+                cursor.execute(query=Constants.Queries.QUERY_DATABASE_FOR_SPECIFIC_REGULAR_SEASON_ADVANCED_CAREER_AVERAGES)
+                query_result_list: list[tuple] = cursor.fetchall()
+                column_names_list:list[str] = [col[0] for col in cursor.description]
+
+            self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
+        finally:
+            self._release_connection(conn)
+        self._logger.info("=" * 100)
+
+        return column_names_list, query_result_list
 
     ## ======================================================== INSERT INTO TABLE METHODS ======================================================== ##
 
@@ -141,7 +175,6 @@ class DatabaseClient:
         finally:
             self._release_connection(conn)
         self._logger.info("=" * 100)
-
 
     async def insert_rows_into_player_table(self) -> None:
         nba_players_list: list[tuple] = await self._web_scraper.get_all_nba_players_list()
