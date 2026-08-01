@@ -477,12 +477,6 @@ class Constants:
         QUERY_DATABASE_FOR_ALL_REGULAR_SEASON_CAREER_AVERAGES: str = """
             SELECT  p_reg.player_id,
                     p.player_name,
-                    p.position,
-                    p.height,
-                    p.weight,
-                    ROUND(AVG(p_reg.games_played), 1) as career_avg_games_played_per_season,
-                    ROUND(AVG(p_reg.games_started), 1) as career_avg_games_started_per_season,
-                    ROUND(AVG(p_reg.minutes_played_per_game), 1) as career_avg_minutes_played,
                     ROUND(AVG(p_reg.point_avg), 1) as career_avg_points,
                     ROUND(AVG(p_reg.rebound_avg), 1) as career_avg_rebounds,
                     ROUND(AVG(p_reg.free_throws_attempted), 1) as career_avg_free_throws_attempted,
@@ -506,14 +500,23 @@ class Constants:
                     ROUND(AVG(p_reg.personal_foul_avg), 1) as career_avg_personal_fouls
             FROM player p
             LEFT JOIN player_regular_season_stats p_reg ON p.id = p_reg.player_id
-            WHERE p.year_debuted > 1980
-            GROUP BY p_reg.player_id, 
-                     p.player_name,
-                     p.position,
-                     p.height,
-                     p.weight
-            HAVING SUM(p_reg.games_played) > 200
+            GROUP BY p_reg.player_id
+            HAVING SUM(p_reg.games_played) > 82
         """
 
-
-
+        QUERY_DATABASE_FOR_SPECIFIC_REGULAR_SEASON_ADVANCED_CAREER_AVERAGES: str = """
+                SELECT  p_reg_adv.player_id,
+                        p.player_name,
+                        ROUND(AVG(p_reg_adv.per), 1) as career_avg_per,
+                        ROUND(AVG(p_reg_adv.ws_per_48), 3) as career_avg_ws_per_48,
+                        ROUND(AVG(p_reg_adv.vorp), 1) as career_avg_vorp
+                FROM player p
+                LEFT JOIN player_regular_season_advanced_stats p_reg_adv ON p.id = p_reg_adv.player_id
+                WHERE p_reg_adv.per IS NOT NULL
+                      AND p_reg_adv.ws_per_48 IS NOT NULL
+                      AND p_reg_adv.vorp IS NOT NULL
+                GROUP BY p_reg_adv.player_id,
+                         p.player_name
+                HAVING SUM(p_reg_adv.games_played) > 164
+                ORDER BY career_avg_vorp DESC
+        """
