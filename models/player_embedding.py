@@ -57,18 +57,14 @@ class PlayerEmbedding:
         scaler: StandardScaler = StandardScaler()
         normalized_array: np.ndarray = scaler.fit_transform(array_prior_to_normalization)
 
-        # target_id_num: int = 11_102
-        #
-        # self._lookup_individual_player_embeddings(normalized_array=normalized_array, target_id_num=target_id_num)
-
         self._logger.info(f"Final Matrix Shape (N, D): {normalized_array.shape}")
-        # self._logger.info(f"Standardized Matrix:\n {normalized_array}")
 
         return normalized_array
 
     def _get_cleaned_dataframe(self) -> pd.DataFrame:
 
-        column_names_list, all_regular_season_career_averages_list = self._database_client.get_all_regular_season_career_averages_list()
+        # column_names_list, all_regular_season_career_averages_list = self._database_client.get_all_regular_season_career_averages_list()
+        column_names_list, all_regular_season_career_averages_list = self._database_client.get_all_regular_season_advanced_career_averages_list()
 
         dataframe: pd.DataFrame = pd.DataFrame(data=all_regular_season_career_averages_list, columns=column_names_list)
 
@@ -77,22 +73,19 @@ class PlayerEmbedding:
 
         features_dataframe: pd.DataFrame = dataframe.drop(columns=['player_id', 'player_name'])
 
-        transformed_dataframe:pd.DataFrame = self._get_transformed_dataframe(features_dataframe=features_dataframe)
+        transformed_dataframe: pd.DataFrame = self._get_transformed_dataframe(features_dataframe=features_dataframe)
 
         self._convert_all_numerical_columns_to_float_values(transformed_dataframe=transformed_dataframe)
 
-        encoded_dataframe: pd.DataFrame = self._get_one_hot_encoded_dataframe(
-            transformed_dataframe=transformed_dataframe)
-
-        # Combine encoded positions back with numerical features (dropping original 'position')
-        result_dataframe: pd.DataFrame = pd.concat([encoded_dataframe, transformed_dataframe.drop(columns=['position'])],
-                                                   axis=1)
-
-        return result_dataframe
+        # encoded_dataframe: pd.DataFrame = self._get_one_hot_encoded_dataframe(
+        #     transformed_dataframe=transformed_dataframe)
+        #
+        # # Combine encoded positions back with numerical features (dropping original 'position')
+        # result_dataframe: pd.DataFrame = pd.concat([encoded_dataframe, transformed_dataframe.drop(columns=['position'])],
+        #                                            axis=1)
+        return transformed_dataframe
 
     def _get_transformed_dataframe(self, features_dataframe: pd.DataFrame) -> pd.DataFrame:
-
-        features_dataframe['height'] = features_dataframe['height'].apply(self._parse_height_to_inches)
 
         nan_cols = features_dataframe.columns[features_dataframe.isna().any()].tolist()
         for col in nan_cols:
