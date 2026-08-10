@@ -40,8 +40,6 @@ class ImmaculateGrid:
 
                 quantity_value: float = 0.0
 
-                test_list:list[int] = [x for x in test_list]
-
                 for element in test_list:
 
                     if element.isdigit():
