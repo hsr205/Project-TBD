@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     base_url: str = Field(..., description="Initial URL to start web-scrapping from")
+    immaculate_grid_url: str = Field(..., description="Immaculate Grid URL to start gather grid data from")
     stats_table_key: str = Field(...,
                                  description="Unique ID that identifies which stats table to scrap from on a given player stats page")
     db_host: str = Field(..., description="PostgreSQL host")
