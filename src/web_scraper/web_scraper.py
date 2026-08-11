@@ -246,7 +246,9 @@ class WebScraper:
             async with await playwright_obj.chromium.launch(headless=False) as browser:
                 page = await browser.new_page()
                 self._logger.info(f"Navigating to {self._immaculate_grid_url}")
-                await page.goto(url=self._immaculate_grid_url)
+                await page.goto(url=self._immaculate_grid_url, wait_until="domcontentloaded", timeout=60_000)
+                self._logger.info(f"Successfully navigated to {self._immaculate_grid_url}")
+                self._logger.info("=" * 100)
 
                 result_list: list[tuple] = []
                 column_text_list: list[str] = await self._get_column_text_list(page=page)
@@ -263,6 +265,9 @@ class WebScraper:
                 return result_list
 
     async def _get_row_text_list(self, page: Page) -> list[str]:
+
+        self._logger.info("Retrieving row data")
+
         row_text_list: list[str] = []
 
         for row_index in range(3, 6):
@@ -281,6 +286,8 @@ class WebScraper:
         return row_text_list
 
     async def _get_column_text_list(self, page: Page) -> list[str]:
+
+        self._logger.info("Retrieving column data")
 
         column_text_list: list[str] = []
 
