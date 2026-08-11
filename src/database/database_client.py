@@ -120,7 +120,7 @@ class DatabaseClient:
                 # TODO: Find a way to do this less manually
                 cursor.execute(query=Constants.Queries.QUERY_DATABASE_FOR_ALL_REGULAR_SEASON_CAREER_AVERAGES)
                 query_result_list: list[tuple] = cursor.fetchall()
-                column_names_list:list[str] = [col[0] for col in cursor.description]
+                column_names_list: list[str] = [col[0] for col in cursor.description]
 
             self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
         finally:
@@ -136,9 +136,10 @@ class DatabaseClient:
             self._logger.info("Querying table from SQL database:")
             with conn.cursor() as cursor:
                 # TODO: Find a way to do this less manually
-                cursor.execute(query=Constants.Queries.QUERY_DATABASE_FOR_SPECIFIC_REGULAR_SEASON_ADVANCED_CAREER_AVERAGES)
+                cursor.execute(
+                    query=Constants.Queries.QUERY_DATABASE_FOR_SPECIFIC_REGULAR_SEASON_ADVANCED_CAREER_AVERAGES)
                 query_result_list: list[tuple] = cursor.fetchall()
-                column_names_list:list[str] = [col[0] for col in cursor.description]
+                column_names_list: list[str] = [col[0] for col in cursor.description]
 
             self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
         finally:
@@ -146,6 +147,58 @@ class DatabaseClient:
         self._logger.info("=" * 100)
 
         return column_names_list, query_result_list
+
+    def get_immaculate_grid_query_results(self, query_elements_tuple: tuple) -> tuple[list[str], list[tuple]]:
+
+        self._logger.info(f"query_elements_tuple = {query_elements_tuple}")
+
+        where_clause: str = self._build_where_clause(query_elements_tuple)
+
+        query_str: str = f"""
+            SELECT *
+            FROM (
+                    SELECT p.player_name
+                    FROM player p
+                    JOIN player_regular_season_stats p_reg ON p.id = p_reg.player_id
+                    WHERE {where_clause}
+                    GROUP BY p.id, p.player_name
+                    ORDER BY MIN(split_part(p_reg.season, '-', 1)::integer) ASC
+                    LIMIT 20
+                 )
+            ORDER BY RANDOM() LIMIT 1;
+            """
+
+        conn: connection = self._get_connection()
+        try:
+            self._logger.info("Querying table from SQL database:")
+            with conn.cursor() as cursor:
+                cursor.execute(query_str)
+                query_result_list: list[tuple] = cursor.fetchall()
+                column_names_list: list[str] = [col[0] for col in cursor.description]
+
+            self._logger.info(f"Returned {len(query_result_list):,} rows")
+            self._logger.info("=" * 100)
+            return column_names_list, query_result_list
+        finally:
+            self._release_connection(conn)
+
+    def _build_where_clause(self, elements: tuple) -> str:
+        conditions: list[str] = [e for e in elements if e.startswith(('p.', 'p_reg.')) or ' ' in e]
+        teams: list[str] = [e for e in elements if e not in conditions]
+
+        # Two-team case requires the subquery
+        if len(teams) == 2:
+            team_list: str = f"('{teams[0]}', '{teams[1]}')"
+            return f"""p_reg.team IN {team_list}
+                    AND p.id IN (
+                        SELECT player_id FROM player_regular_season_stats
+                        WHERE team IN {team_list}
+                        GROUP BY player_id HAVING COUNT(DISTINCT team) = 2
+                    )"""
+
+        # Combine 1-team and 0-team cases into a single list joined by AND
+        all_clauses: list[str] = [f"p_reg.team = '{t}'" for t in teams] + conditions
+        return " AND ".join(all_clauses)
 
     ## ======================================================== INSERT INTO TABLE METHODS ======================================================== ##
 
