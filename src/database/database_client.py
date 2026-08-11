@@ -156,8 +156,9 @@ class DatabaseClient:
             SELECT *
             FROM (
                     SELECT p.player_name
-                    FROM player p
-                    JOIN player_regular_season_stats p_reg ON p.id = p_reg.player_id
+                    FROM franchise f
+                    JOIN player_regular_season_stats p_reg ON f.franchise_abbreviation = p_reg.team
+                    JOIN player p ON p.id = p_reg.player_id
                     WHERE {where_clause}
                     GROUP BY p.id, p.player_name
                     ORDER BY MIN(split_part(p_reg.season, '-', 1)::integer) ASC
@@ -168,14 +169,11 @@ class DatabaseClient:
 
         conn: connection = self._get_connection()
         try:
-            self._logger.info("Querying table from SQL database:")
             with conn.cursor() as cursor:
                 cursor.execute(query_str)
                 query_result_list: list[tuple] = cursor.fetchall()
                 column_names_list: list[str] = [col[0] for col in cursor.description]
 
-            self._logger.info(f"Returned {len(query_result_list):,} rows")
-            self._logger.info("=" * 100)
             return column_names_list, query_result_list
         finally:
             self._release_connection(conn)
