@@ -79,7 +79,8 @@ class Constants:
                 height VARCHAR(5),
                 weight INTEGER,
                 birth_date VARCHAR(100),
-                colleges VARCHAR(100)
+                colleges VARCHAR(100),
+                hall_of_fame VARCHAR(1)
             )
         """
 
@@ -520,3 +521,25 @@ class Constants:
                 HAVING SUM(p_reg_adv.games_played) > 164
                 ORDER BY career_avg_vorp DESC
         """
+
+    class ImmaculateGridCategories:
+        IMMACULATE_GRID_CATEGORY_SQL_MAPPING_DICT: dict[str, str] = {
+            "Block": "p_reg.block_avg > ",
+            "Steal": "p_reg.steal_avg > ",
+            "Rebounds": "p_reg.rebound_avg > ",
+            "Points": "p_reg.point_avg > ",
+            "Assists": "p_reg.assist_avg > ",
+            "All Star": "p_reg.awards LIKE '%AS%'",
+            "All-Rookie": "p_reg.awards LIKE '%ROY%'",
+            "Rookie of the Year": "p_reg.awards LIKE '%ROY-1%'",
+            "MVP": "p_reg.awards LIKE '%MVP-1%'",
+            "All‑NBA": "p_reg.awards LIKE '%NBA1%'",
+            "Defensive Player of the Year": "p_reg.awards LIKE '%DPOY-1%'",
+            "Finals MVP": "",
+            "First Round Draft Pick": "",
+            "Hall of Fame": "",
+            "League Champ": "",
+            "Born Outside US 50 States and DC": "",
+            "Only One Team": "",
+            "Undrafted": ""
+        }
