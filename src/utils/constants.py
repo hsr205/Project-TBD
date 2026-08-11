@@ -533,7 +533,7 @@ class Constants:
             "All-Rookie": "p_reg.awards LIKE '%ROY%'",
             "Rookie of the Year": "p_reg.awards LIKE '%ROY-1%'",
             "MVP": "p_reg.awards LIKE '%MVP-1%'",
-            "All‑NBA": "p_reg.awards LIKE '%NBA1%'",
+            "All‑NBA": "p_reg.awards LIKE '%NBA%'",
             "Defensive Player of the Year": "p_reg.awards LIKE '%DPOY-1%'",
             "Hall of Fame": "p.hall_of_fame = 'Y'",
             "Finals MVP": "",
