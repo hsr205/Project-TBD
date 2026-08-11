@@ -54,6 +54,7 @@ class Constants:
             CREATE TABLE IF NOT EXISTS franchise (
                 id SERIAL PRIMARY KEY,
                 franchise_name VARCHAR(100) NOT NULL,
+                franchise_abbreviation VARCHAR(5),
                 league_name VARCHAR(20) NOT NULL,
                 year_established VARCHAR(20) NOT NULL,
                 current_year VARCHAR(20) NOT NULL,
@@ -66,6 +67,7 @@ class Constants:
                 division_title_wins INTEGER NOT NULL,
                 conference_title_wins INTEGER NOT NULL,
                 championship_title_wins INTEGER NOT NULL
+                league_champion_years VARCHAR(200)
             )
         """
 
@@ -536,9 +538,11 @@ class Constants:
             "All‑NBA": "p_reg.awards LIKE '%NBA%'",
             "Defensive Player of the Year": "p_reg.awards LIKE '%DPOY-1%'",
             "Hall of Fame": "p.hall_of_fame = 'Y'",
-            "Finals MVP": "",
+            # TODO: Has to be while playing for the team requested
+            "Finals MVP": "p.finals_mvp = 'Y'",
+
             "First Round Draft Pick": "",
-            "League Champ": "",
+            "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
             "Born Outside US 50 States and DC": "",
             "Only One Team": "",
             "Undrafted": ""
