@@ -150,8 +150,6 @@ class DatabaseClient:
 
     def get_immaculate_grid_query_results(self, query_elements_tuple: tuple) -> tuple[list[str], list[tuple]]:
 
-        self._logger.info(f"query_elements_tuple = {query_elements_tuple}")
-
         where_clause: str = self._build_where_clause(query_elements_tuple)
 
         query_str: str = f"""
@@ -163,7 +161,7 @@ class DatabaseClient:
                     WHERE {where_clause}
                     GROUP BY p.id, p.player_name
                     ORDER BY MIN(split_part(p_reg.season, '-', 1)::integer) ASC
-                    LIMIT 20
+                    LIMIT 10
                  )
             ORDER BY RANDOM() LIMIT 1;
             """
