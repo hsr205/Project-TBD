@@ -26,7 +26,7 @@ class ImmaculateGrid:
             element_one_str: str = tuple_obj[0]
             element_two_str: str = tuple_obj[1]
 
-            self._logger.info(f"({element_one_str}, {element_two_str})")
+            # self._logger.info(f"({element_one_str}, {element_two_str})")
 
             initial_category_str: str = Constants.TEAM_ABBREVIATION_DICT.get(element_one_str, '')
             secondary_category_str: str = Constants.TEAM_ABBREVIATION_DICT.get(element_two_str, '')
@@ -51,6 +51,8 @@ class ImmaculateGrid:
         result_matrix: np.ndarray = np.array(player_result_list).reshape(3, 3)
 
         self._logger.info("Result Matrix:")
+
+        self._logger.info("=" * 100)
 
         print(result_matrix)
 

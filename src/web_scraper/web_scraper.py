@@ -267,7 +267,7 @@ class WebScraper:
 
     async def _get_row_text_list(self, page: Page) -> list[str]:
 
-        self._logger.info("Retrieving row data")
+        # self._logger.info("Retrieving row data")
 
         row_text_list: list[str] = []
 
@@ -288,7 +288,7 @@ class WebScraper:
 
     async def _get_column_text_list(self, page: Page) -> list[str]:
 
-        self._logger.info("Retrieving column data")
+        # self._logger.info("Retrieving column data")
 
         column_text_list: list[str] = []
 
@@ -325,8 +325,8 @@ class WebScraper:
 
         if await close_button.is_visible():
             await close_button.click()
-            self._logger.info("Navigating away from instruction modal")
-            self._logger.info("=" * 100)
+            # self._logger.info("Navigating away from instruction modal")
+            # self._logger.info("=" * 100)
 
     async def _navigate_to_teams_page(self, page: Page) -> None:
         await page.get_by_role(role="link", name="Teams", exact=False).first.click()
