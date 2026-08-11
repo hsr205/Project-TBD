@@ -240,14 +240,15 @@ class WebScraper:
         self._logger.info(f"Navigating to {self._base_url}")
         await page.goto(url=self._base_url)
 
+    async def get_immaculate_grid_list_data(self, index_str: str) -> list[tuple]:
 
-    async def get_immaculate_grid_list_data(self) -> list[tuple]:
         async with async_playwright() as playwright_obj:
             async with await playwright_obj.chromium.launch(headless=False) as browser:
                 page = await browser.new_page()
-                self._logger.info(f"Navigating to {self._immaculate_grid_url}")
-                await page.goto(url=self._immaculate_grid_url, wait_until="domcontentloaded", timeout=60_000)
-                self._logger.info(f"Successfully navigated to {self._immaculate_grid_url}")
+                self._logger.info(f"Navigating to {self._immaculate_grid_url + index_str}")
+                await page.goto(url=self._immaculate_grid_url + index_str, wait_until="domcontentloaded",
+                                timeout=60_000)
+                self._logger.info(f"Successfully navigated to {self._immaculate_grid_url + index_str}")
                 self._logger.info("=" * 100)
 
                 result_list: list[tuple] = []
