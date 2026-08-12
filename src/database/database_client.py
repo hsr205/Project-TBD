@@ -148,29 +148,52 @@ class DatabaseClient:
 
         return column_names_list, query_result_list
 
-    def update_player_table_statement_for_draft_position(self, draft_data_player_list: list[tuple]) -> tuple[
-        list[str], list[tuple]]:
+    def update_player_table_statement_for_draft_position(self, draft_data_player_list: list[tuple]) -> None:
 
-        # Extract the player name from each tuple and escape single quotes for SQL
-        formatted_player_names = [
-            f"'{player[0].replace("'", "''")}'"
-            for player in draft_data_player_list
-        ]
+        self._logger.info(f"Updating {len(draft_data_player_list):,} player draft records:")
+        self._logger.info("=" * 100)
 
-        # Join into a comma-separated string
-        formatted_player_string = ",\n                ".join(formatted_player_names)
+        case_str, in_clause_str = self._get_case_and_in_clause_str(draft_data_player_list=draft_data_player_list)
 
         update_statement_str: str = f"""
-        
-            UPDATE player
-                SET first_round_draft_pick = 'Y'
-                WHERE player_name IN (
-                    {formatted_player_string}
-                );
+                UPDATE player
+                    SET round_selected = CASE player_name
+                        {case_str}
+                    END
+                    WHERE player_name IN (
+                        {in_clause_str}
+                    );
+            """
 
-        """
+        conn: connection = self._get_connection()
+        try:
+            self._logger.info("Executing update statement for player draft position:")
+            with conn.cursor() as cursor:
+                cursor.execute(update_statement_str)
+            conn.commit()
+            self._logger.info("Successfully executed update statement for player draft position:")
+            self._logger.info("=" * 100)
+        except Exception as e:
+            conn.rollback()
+            self._logger.error(f"Failed to update draft position: {e}")
+            raise
+        finally:
+            self._release_connection(conn)
 
-        return self._get_query_result_tuple(query_str=update_statement_str)
+    def _get_case_and_in_clause_str(self, draft_data_player_list: list[tuple]) -> tuple[str, str]:
+
+        case_conditions_list: list[str] = []
+        formatted_player_names_list: list[str] = []
+
+        for player_name, round_num in draft_data_player_list:
+            escaped_name = player_name.replace("'", "''")
+            case_conditions_list.append(f"WHEN '{escaped_name}' THEN {round_num}")
+            formatted_player_names_list.append(f"'{escaped_name}'")
+
+        case_str: str = "\n ".join(case_conditions_list)
+        in_clause_str: str = ",\n ".join(formatted_player_names_list)
+
+        return case_str, in_clause_str
 
     def get_immaculate_grid_query_results(self, query_elements_tuple: tuple) -> tuple[list[str], list[tuple]]:
 
