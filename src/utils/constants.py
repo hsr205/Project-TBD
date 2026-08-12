@@ -84,6 +84,7 @@ class Constants:
                 colleges VARCHAR(100),
                 hall_of_fame VARCHAR(1),
                 round_selected INTEGER
+                birth_country VARCHAR(50)
             )
         """
 
@@ -551,7 +552,8 @@ class Constants:
             "First Round Draft Pick": "p.round_selected = 1",
             "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
             "Undrafted": "p.round_selected = 9999",
+            "Only One Team": "p.id IN (SELECT player_id FROM player_regular_season_stats GROUP BY player_id HAVING COUNT(DISTINCT team) = 1)",
 
             "Born Outside US 50 States and DC": "",
-            "Only One Team": "",
+
         }
