@@ -16,6 +16,25 @@ class DataLoader:
         self._database_client: DatabaseClient = DatabaseClient(settings=settings)
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
+    async def update_data_in_player_table(self) -> None:
+
+        try:
+
+            async with async_playwright() as playwright_obj:
+                async with await playwright_obj.chromium.launch(headless=False) as browser:
+                    page = await browser.new_page()
+                    await self._web_scraper.navigate_to_draft_page_url(page=page)
+
+                    draft_data_player_list: list[tuple] = await self._web_scraper.scrape_draft_pick_position(page=page)
+
+                    self._database_client.update_player_table_statement_for_draft_position(
+                        draft_data_player_list=draft_data_player_list)
+
+        finally:
+            self._logger.info("Closing connection pool")
+            self._logger.info("=" * 100)
+            self._database_client.close_pool()
+
     async def load_data_into_table(self, insert_query_str: str, entity_dict: dict[int, str]) -> None:
 
         try:
