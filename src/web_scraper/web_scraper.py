@@ -1,4 +1,5 @@
 import asyncio
+import re
 from logging import Logger
 
 from playwright.async_api import async_playwright, Page, Locator
@@ -45,7 +46,7 @@ class WebScraper:
         year_links_locator: Locator = page.locator("table#first_overall tbody tr th[data-stat='draft'] a")
         total_year_links_int: int = int(await year_links_locator.count())
 
-        for index in tqdm(range(total_year_links_int), desc="Scrapping data from all NBA draft pages"):
+        for index in tqdm(range(total_year_links_int), desc="Scrapping Data From All NBA Drafts"):
             # Re-evaluate selector per iteration to prevent stale element handles after go_back()
             current_link = page.locator("table#first_overall tbody tr th[data-stat='draft'] a").nth(index)
 
@@ -65,25 +66,37 @@ class WebScraper:
         return all_players_list
 
     async def _get_draft_data_player_list(self, page: Page) -> list[tuple]:
-        """Scrapes Round 1 players from table#stats and returns [(player_name, 'Y'), ...]"""
         await page.wait_for_selector("table#stats")
 
         rows = await page.locator("table#stats tbody tr").all()
+
+        current_round_int: int = 1
         result_list: list[tuple] = []
 
         for row in rows:
             row_class = await row.get_attribute("class") or ""
 
-            # Stop as soon as the Round 2 header row appears
-            if "thead" in row_class or "over_header" in row_class:
-                break
+            if "over_header" in row_class:
+                header_elem = row.locator('[data-stat="header_draft"]')
+                header_element_count_int: int = await header_elem.count()
+                if header_element_count_int > 0:
+                    header_text = str(await header_elem.inner_text()).strip()
+                    match = re.search(r"Round\s*(\d+)", header_text, re.IGNORECASE)
+                    if match:
+                        current_round_int = int(match.group(1))
+                continue
 
-            player_element = row.locator('[data-stat="player"]')
-            player_element_count_int: int = await player_element.count()
+                # Skip repeating headers
+            if "thead" in row_class:
+                continue
+
+                # Extract player name
+            player_elem = row.locator('[data-stat="player"]')
+            player_element_count_int: int = await player_elem.count()
             if player_element_count_int > 0:
-                player_name = str(await player_element.inner_text()).strip()
-                if player_name:
-                    result_list.append((player_name, 'Y'))
+                player_name_str: str = str(await player_elem.inner_text()).strip()
+                if player_name_str:
+                    result_list.append((player_name_str, current_round_int))
 
         return result_list
 
