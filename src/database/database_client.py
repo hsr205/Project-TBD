@@ -148,6 +148,30 @@ class DatabaseClient:
 
         return column_names_list, query_result_list
 
+    def update_player_table_statement_for_draft_position(self, draft_data_player_list: list[tuple]) -> tuple[
+        list[str], list[tuple]]:
+
+        # Extract the player name from each tuple and escape single quotes for SQL
+        formatted_player_names = [
+            f"'{player[0].replace("'", "''")}'"
+            for player in draft_data_player_list
+        ]
+
+        # Join into a comma-separated string
+        formatted_player_string = ",\n                ".join(formatted_player_names)
+
+        update_statement_str: str = f"""
+        
+            UPDATE player
+                SET first_round_draft_pick = 'Y'
+                WHERE player_name IN (
+                    {formatted_player_string}
+                );
+
+        """
+
+        return self._get_query_result_tuple(query_str=update_statement_str)
+
     def get_immaculate_grid_query_results(self, query_elements_tuple: tuple) -> tuple[list[str], list[tuple]]:
 
         where_clause: str = self._build_where_clause(query_elements_tuple)
@@ -167,6 +191,9 @@ class DatabaseClient:
             ORDER BY RANDOM() LIMIT 1;
             """
 
+        return self._get_query_result_tuple(query_str=query_str)
+
+    def _get_query_result_tuple(self, query_str: str) -> tuple:
         conn: connection = self._get_connection()
         try:
             with conn.cursor() as cursor:
