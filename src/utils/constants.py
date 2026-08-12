@@ -146,6 +146,9 @@ class Constants:
                 turnover_avg DECIMAL,
                 personal_foul_avg DECIMAL,
                 point_avg DECIMAL,
+                total_career_points INTEGER,
+                total_career_rebounds INTEGER,
+                total_career_assists INTEGER,
                 awards VARCHAR(100),
                 CONSTRAINT fk_player FOREIGN KEY (player_id) REFERENCES player(id) ON DELETE CASCADE
             )
@@ -528,9 +531,12 @@ class Constants:
         IMMACULATE_GRID_CATEGORY_SQL_MAPPING_DICT: dict[str, str] = {
             "Block": "p_reg.block_avg > ",
             "Steal": "p_reg.steal_avg > ",
-            "Rebounds": "p_reg.rebound_avg > ",
             "Points": "p_reg.point_avg > ",
+            "Rebounds": "p_reg.rebound_avg > ",
             "Assists": "p_reg.assist_avg > ",
+            "Pointscareer": "p_reg.total_career_points > ",
+            "Assistscareer": "p_reg.total_career_assists > ",
+            "Reboundscareer": "p_reg.total_career_rebounds > ",
             "All Star": "p_reg.awards LIKE '%AS%'",
             "All-Rookie": "p_reg.awards LIKE '%ROY%'",
             "Rookie of the Year": "p_reg.awards LIKE '%ROY-1%'",
