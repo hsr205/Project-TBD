@@ -83,7 +83,7 @@ class Constants:
                 birth_date VARCHAR(100),
                 colleges VARCHAR(100),
                 hall_of_fame VARCHAR(1),
-                first_round_pick VARCHAR(1)
+                round_selected INTEGER
             )
         """
 
@@ -548,9 +548,9 @@ class Constants:
 
             # TODO: Has to be while playing for the team requested
             "Finals MVP": "p.finals_mvp = 'Y'",
-            "First Round Draft Pick": "p.first_round_draft_pick = 'Y'",
+            "First Round Draft Pick": "p.round_selected = 1",
             "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
             "Born Outside US 50 States and DC": "",
             "Only One Team": "",
-            "Undrafted": ""
+            "Undrafted": "p.round_selected = NULL",
         }
