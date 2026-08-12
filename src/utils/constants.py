@@ -552,5 +552,5 @@ class Constants:
             "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
             "Born Outside US 50 States and DC": "",
             "Only One Team": "",
-            "Undrafted": "p.round_selected = NULL",
+            "Undrafted": "p.round_selected = 9999",
         }
