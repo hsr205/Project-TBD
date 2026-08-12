@@ -2,6 +2,7 @@ import asyncio
 from logging import Logger
 
 from playwright.async_api import async_playwright, Page, Locator
+from tqdm import tqdm
 
 from src.config.config import Settings
 from src.logger.logger import AppLogger
@@ -13,6 +14,7 @@ class WebScraper:
 
     def __init__(self, settings: Settings) -> None:
         self._base_url: str = settings.base_url
+        self._draft_url: str = settings.draft_url
         self._stats_table_key: str = settings.stats_table_key
         self._data_cleanser: DataCleanser = DataCleanser()
         self._immaculate_grid_url: str = settings.immaculate_grid_url
@@ -29,6 +31,61 @@ class WebScraper:
                                                                        team_abbr=team_abbr)
 
         return await self._extract_stats_from_html_table(page=page, player_name=search_name)
+
+    async def scrape_draft_pick_position(self, page: Page) -> list[tuple]:
+        all_players_list: list[tuple] = await self._navigate_to_specified_draft_page(page=page)
+        await asyncio.sleep(1)
+
+        return all_players_list
+
+    async def _navigate_to_specified_draft_page(self, page: Page) -> list[tuple]:
+
+        all_players_list: list[tuple] = []
+        await page.wait_for_selector("table#first_overall")
+        year_links_locator: Locator = page.locator("table#first_overall tbody tr th[data-stat='draft'] a")
+        total_year_links_int: int = int(await year_links_locator.count())
+
+        for index in tqdm(range(total_year_links_int), desc="Scrapping data from all NBA draft pages"):
+            # Re-evaluate selector per iteration to prevent stale element handles after go_back()
+            current_link = page.locator("table#first_overall tbody tr th[data-stat='draft'] a").nth(index)
+
+            await current_link.inner_text()
+
+            # Click the link and wait for navigation
+            await current_link.click()
+            await page.wait_for_load_state("domcontentloaded")
+
+            draft_year_list: list[tuple] = await self._get_draft_data_player_list(page)
+
+            all_players_list.extend(draft_year_list)
+
+            await page.go_back()
+            await page.wait_for_selector("table#first_overall")
+
+        return all_players_list
+
+    async def _get_draft_data_player_list(self, page: Page) -> list[tuple]:
+        """Scrapes Round 1 players from table#stats and returns [(player_name, 'Y'), ...]"""
+        await page.wait_for_selector("table#stats")
+
+        rows = await page.locator("table#stats tbody tr").all()
+        result_list: list[tuple] = []
+
+        for row in rows:
+            row_class = await row.get_attribute("class") or ""
+
+            # Stop as soon as the Round 2 header row appears
+            if "thead" in row_class or "over_header" in row_class:
+                break
+
+            player_element = row.locator('[data-stat="player"]')
+            player_element_count_int: int = await player_element.count()
+            if player_element_count_int > 0:
+                player_name = str(await player_element.inner_text()).strip()
+                if player_name:
+                    result_list.append((player_name, 'Y'))
+
+        return result_list
 
     async def _extract_franchise_stats_from_html_table(self, page: Page, franchise_name: str, team_abbr: str) -> \
             list[tuple]:
@@ -235,6 +292,10 @@ class WebScraper:
             self._logger.info("Browser closed successfully")
 
         return nba_franchise_tuple_list
+
+    async def navigate_to_draft_page_url(self, page: Page) -> None:
+        self._logger.info(f"Navigating to {self._draft_url}")
+        await page.goto(url=self._draft_url)
 
     async def navigate_to_base_url(self, page: Page) -> None:
         self._logger.info(f"Navigating to {self._base_url}")
