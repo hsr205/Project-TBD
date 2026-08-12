@@ -11,23 +11,12 @@ async def main() -> int:
     settings: Settings = Settings()
 
     immaculate_grid: ImmaculateGrid = ImmaculateGrid(settings=settings)
-
     try:
 
-        # for index in range(1, 1_115):
-        for index in range(99, 1_115):
-            index_str:str = str(index)
+        # for index in range(104, 1_115):
+        for index in range(105, 106):
+            index_str: str = str(index)
             await immaculate_grid.get_immaculate_grid_answer_matrix(index_str=index_str)
-
-        # logger.info("Executing application")
-        # logger.info("=" * 100)
-        #
-        # umap_rending: UMAPRendering = UMAPRendering(settings=settings)
-        #
-        # umap_rending.display_umap_rending()
-        #
-        # logger.info("Successfully completed application execution")
-        # logger.info("=" * 100)
 
         return 0
 

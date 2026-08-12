@@ -550,7 +550,8 @@ class Constants:
             "Finals MVP": "p.finals_mvp = 'Y'",
             "First Round Draft Pick": "p.round_selected = 1",
             "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
+            "Undrafted": "p.round_selected = 9999",
+
             "Born Outside US 50 States and DC": "",
             "Only One Team": "",
-            "Undrafted": "p.round_selected = 9999",
         }
