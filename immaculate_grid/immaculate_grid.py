@@ -17,16 +17,15 @@ class ImmaculateGrid:
         self._database_client: DatabaseClient = DatabaseClient(settings=settings)
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
-    async def get_immaculate_grid_answer_matrix(self, index_str:str) -> None:
-        immaculate_grid_list_data: list[tuple] = await self._web_scraper.get_immaculate_grid_list_data(index_str=index_str)
+    async def get_immaculate_grid_answer_matrix(self, index_str: str) -> None:
+        immaculate_grid_list_data: list[tuple] = await self._web_scraper.get_immaculate_grid_list_data(
+            index_str=index_str)
 
         player_result_list: list[str] = []
 
         for tuple_obj in immaculate_grid_list_data:
             element_one_str: str = tuple_obj[0]
             element_two_str: str = tuple_obj[1]
-
-            # self._logger.info(f"({element_one_str}, {element_two_str})")
 
             initial_category_str: str = Constants.TEAM_ABBREVIATION_DICT.get(element_one_str, '')
             secondary_category_str: str = Constants.TEAM_ABBREVIATION_DICT.get(element_two_str, '')
@@ -66,7 +65,15 @@ class ImmaculateGrid:
         clean_str = element_str.replace('\xa0', ' ').strip()
         mapping = Constants.ImmaculateGridCategories.IMMACULATE_GRID_CATEGORY_SQL_MAPPING_DICT
 
+        is_career: bool = 'career' in clean_str.lower()
+
         for key, sql in mapping.items():
+
+            if is_career and not key.endswith('career'):
+                continue
+            if not is_career and key.endswith('career'):
+                continue
+
             if key in clean_str and sql:
                 if sql.endswith('> '):
                     num = self._extract_number(clean_str)
