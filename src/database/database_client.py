@@ -97,7 +97,7 @@ class DatabaseClient:
             self._logger.info("Querying table from SQL database:")
             with conn.cursor() as cursor:
                 # TODO: Find a way to do this less manually
-                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_MISSED_NBA_PLAYERS)
+                cursor.execute(query=Constants.Queries.QUERY_PLAYER_TABLE_FOR_ALL_NBA_PLAYERS)
                 query_result_list: list[tuple] = cursor.fetchall()
 
             self._logger.info(f"Returned {len(query_result_list):,} rows from queried table")
@@ -148,12 +148,50 @@ class DatabaseClient:
 
         return column_names_list, query_result_list
 
+    def update_player_table_statement_for_player_birth_country(self, player_birth_country_list: list[tuple]) -> None:
+
+        self._logger.info(f"Updating {len(player_birth_country_list):,} player birth records:")
+        self._logger.info("=" * 100)
+
+        case_str, in_clause_str = self._get_case_and_in_clause_str(player_list=player_birth_country_list)
+
+        values_row_list:list[str] = [
+            f"({p_id}, '{country.replace("'", "''")}')" if isinstance(p_id,
+                                                                      int) else f"('{p_id}', '{country.replace("'", "''")}')"
+            for p_id, _, country in player_birth_country_list
+        ]
+        values_str = ",\n".join(values_row_list)
+
+        update_statement_str: str = f"""
+                UPDATE player p
+                SET birth_country = v.birth_country
+                FROM (VALUES
+                    {values_str}
+                ) AS v(id, birth_country)
+                WHERE p.id = v.id;
+            """
+
+        conn: connection = self._get_connection()
+        try:
+            self._logger.info("Executing update statement for player birth country:")
+            with conn.cursor() as cursor:
+                cursor.execute(update_statement_str)
+            conn.commit()
+            self._logger.info("Successfully executed update statement for birth country:")
+            self._logger.info("=" * 100)
+        except Exception as e:
+            conn.rollback()
+            self._logger.error(f"Failed to update draft position: {e}")
+            raise
+        finally:
+            self._release_connection(conn)
+
     def update_player_table_statement_for_draft_position(self, draft_data_player_list: list[tuple]) -> None:
 
         self._logger.info(f"Updating {len(draft_data_player_list):,} player draft records:")
         self._logger.info("=" * 100)
 
-        case_str, in_clause_str = self._get_case_and_in_clause_str(draft_data_player_list=draft_data_player_list)
+        case_str, in_clause_str = self._get_case_and_in_clause_str(player_list=draft_data_player_list)
 
         update_statement_str: str = f"""
                 UPDATE player
@@ -180,14 +218,14 @@ class DatabaseClient:
         finally:
             self._release_connection(conn)
 
-    def _get_case_and_in_clause_str(self, draft_data_player_list: list[tuple]) -> tuple[str, str]:
+    def _get_case_and_in_clause_str(self, player_list: list[tuple]) -> tuple[str, str]:
 
         case_conditions_list: list[str] = []
         formatted_player_names_list: list[str] = []
 
-        for player_name, round_num in draft_data_player_list:
+        for player_name, index_value in player_list:
             escaped_name = player_name.replace("'", "''")
-            case_conditions_list.append(f"WHEN '{escaped_name}' THEN {round_num}")
+            case_conditions_list.append(f"WHEN '{escaped_name}' THEN {index_value}")
             formatted_player_names_list.append(f"'{escaped_name}'")
 
         case_str: str = "\n ".join(case_conditions_list)
