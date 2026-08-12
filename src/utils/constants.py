@@ -82,7 +82,8 @@ class Constants:
                 weight INTEGER,
                 birth_date VARCHAR(100),
                 colleges VARCHAR(100),
-                hall_of_fame VARCHAR(1)
+                hall_of_fame VARCHAR(1),
+                first_round_pick VARCHAR(1)
             )
         """
 
@@ -544,10 +545,10 @@ class Constants:
             "All‑NBA": "p_reg.awards LIKE '%NBA%'",
             "Defensive Player of the Year": "p_reg.awards LIKE '%DPOY-1%'",
             "Hall of Fame": "p.hall_of_fame = 'Y'",
+
             # TODO: Has to be while playing for the team requested
             "Finals MVP": "p.finals_mvp = 'Y'",
-
-            "First Round Draft Pick": "",
+            "First Round Draft Pick": "p.first_round_draft_pick = 'Y'",
             "League Champ": "f.league_champion_years LIKE '%' || (split_part(p_reg.season, '-', 1)::integer + 1)::text || '%'",
             "Born Outside US 50 States and DC": "",
             "Only One Team": "",
