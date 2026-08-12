@@ -46,7 +46,7 @@ class WebScraper:
         year_links_locator: Locator = page.locator("table#first_overall tbody tr th[data-stat='draft'] a")
         total_year_links_int: int = int(await year_links_locator.count())
 
-        for index in tqdm(range(total_year_links_int), desc="Scrapping Data From All NBA Drafts"):
+        for index in tqdm(range(1, total_year_links_int), desc="Scrapping Data From All NBA Drafts"):
             # Re-evaluate selector per iteration to prevent stale element handles after go_back()
             current_link = page.locator("table#first_overall tbody tr th[data-stat='draft'] a").nth(index)
 
