@@ -16,7 +16,37 @@ class DataLoader:
         self._database_client: DatabaseClient = DatabaseClient(settings=settings)
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
-    async def update_data_in_player_table(self) -> None:
+    async def update_player_birth_country_in_player_table(self, all_players_data_dict: dict[int, str]) -> None:
+        try:
+
+            async with async_playwright() as playwright_obj:
+                async with await playwright_obj.chromium.launch(headless=False) as browser:
+                    page = await browser.new_page()
+                    await self._web_scraper.navigate_to_base_url(page=page)
+
+                    for player_id, player_name in all_players_data_dict.items():
+                        try:
+                            player_birth_country_list: list[
+                                tuple] = await self._web_scraper.scrape_player_birth_country_data(
+                                page=page,
+                                all_players_data_dict=all_players_data_dict
+                            )
+
+                            self._database_client.update_player_table_statement_for_player_birth_country(
+                                player_birth_country_list=player_birth_country_list
+                            )
+
+                        except Exception as entity_error:
+                            self._logger.warning(
+                                f"Failed to process '{player_name}', skipping — reason: {entity_error}")
+                            await self._web_scraper.navigate_to_base_url(page=page)
+                            continue
+        finally:
+            self._logger.info("Closing connection pool")
+            self._logger.info("=" * 100)
+            self._database_client.close_pool()
+
+    async def update_draft_data_in_player_table(self) -> None:
 
         try:
 
