@@ -150,15 +150,13 @@ class DatabaseClient:
 
     def update_player_table_statement_for_player_birth_country(self, player_birth_country_list: list[tuple]) -> None:
 
-        self._logger.info(f"Updating {len(player_birth_country_list):,} player birth records:")
+        self._logger.info(f"Updating {len(player_birth_country_list):,} player birth record(s):")
         self._logger.info("=" * 100)
 
-        case_str, in_clause_str = self._get_case_and_in_clause_str(player_list=player_birth_country_list)
-
-        values_row_list:list[str] = [
+        values_row_list: list[str] = [
             f"({p_id}, '{country.replace("'", "''")}')" if isinstance(p_id,
                                                                       int) else f"('{p_id}', '{country.replace("'", "''")}')"
-            for p_id, _, country in player_birth_country_list
+            for p_id, country in player_birth_country_list
         ]
         values_str = ",\n".join(values_row_list)
 
@@ -188,7 +186,7 @@ class DatabaseClient:
 
     def update_player_table_statement_for_draft_position(self, draft_data_player_list: list[tuple]) -> None:
 
-        self._logger.info(f"Updating {len(draft_data_player_list):,} player draft records:")
+        self._logger.info(f"Updating {len(draft_data_player_list):,} player draft record(s):")
         self._logger.info("=" * 100)
 
         case_str, in_clause_str = self._get_case_and_in_clause_str(player_list=draft_data_player_list)
