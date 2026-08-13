@@ -24,12 +24,13 @@ class DataLoader:
                     page = await browser.new_page()
                     await self._web_scraper.navigate_to_base_url(page=page)
 
-                    for player_id, player_name in all_players_data_dict.items():
+                    for player_id, player_name_str in all_players_data_dict.items():
                         try:
                             player_birth_country_list: list[
                                 tuple] = await self._web_scraper.scrape_player_birth_country_data(
                                 page=page,
-                                all_players_data_dict=all_players_data_dict
+                                player_id=player_id,
+                                player_name_str=player_name_str
                             )
 
                             self._database_client.update_player_table_statement_for_player_birth_country(
@@ -38,7 +39,7 @@ class DataLoader:
 
                         except Exception as entity_error:
                             self._logger.warning(
-                                f"Failed to process '{player_name}', skipping — reason: {entity_error}")
+                                f"Failed to process '{player_name_str}', skipping — reason: {entity_error}")
                             await self._web_scraper.navigate_to_base_url(page=page)
                             continue
         finally:
