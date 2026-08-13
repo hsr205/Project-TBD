@@ -33,13 +33,45 @@ class WebScraper:
 
         return await self._extract_stats_from_html_table(page=page, player_name=search_name)
 
+    async def scrape_player_birth_country_data(self, page: Page, player_id: int, player_name_str: str) -> list[tuple]:
+
+        all_players_country_data_list: list[tuple] = []
+
+        await self._navigate_to_specified_page(page=page, search_name=player_name_str)
+
+        await asyncio.sleep(1)
+
+        player_birth_data_list: list[tuple] = await self._get_player_birth_data_from_player_page(page,
+                                                                                                 player_id=player_id)
+
+        all_players_country_data_list.extend(player_birth_data_list)
+
+        return all_players_country_data_list
+
+    # TODO: Complete the following method by targeting the first section of each player's bio page
+    async def _get_player_birth_data_from_player_page(self, page: Page, player_id: int) -> list[
+        tuple]:
+
+        country_or_us_state_name_str = await page.locator(
+            "div#meta p:has(strong:has-text('Born')) a[href*='birthplaces']").inner_text()
+
+
+        if country_or_us_state_name_str in Constants.US_STATES_LIST:
+            country_or_us_state_name_str = 'United States'
+
+        player_id_birth_country_tuple: tuple = tuple([player_id, country_or_us_state_name_str])
+
+        result_list: list[tuple] = [player_id_birth_country_tuple]
+
+        return result_list
+
     async def scrape_draft_pick_position(self, page: Page) -> list[tuple]:
-        all_players_list: list[tuple] = await self._navigate_to_specified_draft_page(page=page)
+        all_players_list: list[tuple] = await self._get_player_draft_data_list(page=page)
         await asyncio.sleep(1)
 
         return all_players_list
 
-    async def _navigate_to_specified_draft_page(self, page: Page) -> list[tuple]:
+    async def _get_player_draft_data_list(self, page: Page) -> list[tuple]:
 
         all_players_list: list[tuple] = []
         await page.wait_for_selector("table#first_overall")
