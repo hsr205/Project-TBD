@@ -11,10 +11,10 @@ async def main() -> int:
     settings: Settings = Settings()
 
     immaculate_grid: ImmaculateGrid = ImmaculateGrid(settings=settings)
+
     try:
 
-        # for index in range(104, 1_115):
-        for index in range(105, 106):
+        for index in range(0, 1_115):
             index_str: str = str(index)
             await immaculate_grid.get_immaculate_grid_answer_matrix(index_str=index_str)
 
