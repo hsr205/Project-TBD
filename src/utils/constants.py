@@ -567,6 +567,6 @@ class Constants:
             "Undrafted": "p.round_selected = 9999",
             "Only One Team": "p.id IN (SELECT player_id FROM player_regular_season_stats GROUP BY player_id HAVING COUNT(DISTINCT team) = 1)",
 
-            "Born Outside US 50 States and DC": "",
+            "Born Outside US 50 States and DC": "p.birth_country <> 'United States'",
 
         }
