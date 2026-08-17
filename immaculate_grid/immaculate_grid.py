@@ -1,6 +1,7 @@
 from logging import Logger
 
 import numpy as np
+from playwright.async_api import async_playwright, Page, Locator
 
 from src.config.config import Settings
 from src.database.database_client import DatabaseClient
@@ -13,13 +14,46 @@ class ImmaculateGrid:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._immaculate_grid_url: str = settings.immaculate_grid_url
         self._web_scraper: WebScraper = WebScraper(settings=self._settings)
         self._database_client: DatabaseClient = DatabaseClient(settings=settings)
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
 
-    async def get_immaculate_grid_answer_matrix(self, index_str: str) -> None:
-        immaculate_grid_list_data: list[tuple] = await self._web_scraper.get_immaculate_grid_list_data(
-            index_str=index_str)
+    async def _insert_players_into_immaculate_grid(self, page: Page, immaculate_grid_answer_matrix: np.ndarray) -> None:
+
+        self._logger.info("Inserting players into immaculate grid:")
+
+        for row_int in range(len(immaculate_grid_answer_matrix)):
+            for column_int in range(len(immaculate_grid_answer_matrix[row_int])):
+                # self._logger.info(f"player_name -> {immaculate_grid_answer_matrix[row_int][column_int]}")
+                player_name_str: str = immaculate_grid_answer_matrix[row_int][column_int]
+                await self._fill_immaculate_grid(page=page, row_int=row_int, column_int=column_int,
+                                                 player_name_str=player_name_str)
+
+        # self._logger.info("=" * 100)
+
+    async def _fill_immaculate_grid(self, page: Page, row_int: int, column_int: int, player_name_str: str) -> None:
+        # 1. Click the grid cell button using data-testid
+
+        cell_button_locator: Locator = page.locator(f'[data-testid="ig-grid-{row_int + 1}-{column_int + 1}"] button')
+        await cell_button_locator.click()
+
+        # 2. Type into the search input box that appears in the overlay/modal
+        search_input_locator: Locator = page.locator('input[type="search"], input[type="text"]')
+        await search_input_locator.wait_for(state="visible")
+        await search_input_locator.fill(value=player_name_str)
+
+        # 3. Locate the first result's "Select" button inside the combobox options list
+        select_button_locator: Locator = page.locator(
+            'ul[id^="headlessui-combobox-options"] li[role="option"]') \
+            .first \
+            .locator('div:has-text("Select")')
+
+        # Wait for the option to appear and click "Select"
+        await select_button_locator.wait_for(state="visible")
+        await select_button_locator.click()
+
+    async def _get_immaculate_grid_answer_matrix(self, immaculate_grid_list_data) -> np.ndarray:
 
         player_result_list: list[str] = []
 
@@ -36,10 +70,10 @@ class ImmaculateGrid:
             sql_condition_str_2: str = self._get_sql_condition_str(category_str=secondary_category_str,
                                                                    element_str=element_two_str)
 
-            elem_1: str = initial_category_str if initial_category_str else sql_condition_str_1
-            elem_2: str = secondary_category_str if secondary_category_str else sql_condition_str_2
+            element_1_str: str = initial_category_str if initial_category_str else sql_condition_str_1
+            element_2_str: str = secondary_category_str if secondary_category_str else sql_condition_str_2
 
-            query_elements_tuple: tuple = tuple([elem_1, elem_2])
+            query_elements_tuple: tuple = tuple([element_1_str, element_2_str])
 
             column_names_list, query_result_list = self._database_client.get_immaculate_grid_query_results(
                 query_elements_tuple=query_elements_tuple)
@@ -49,13 +83,101 @@ class ImmaculateGrid:
 
         result_matrix: np.ndarray = np.array(player_result_list).reshape(3, 3)
 
-        self._logger.info("Result Matrix:")
+        return result_matrix
 
-        self._logger.info("=" * 100)
+    async def complete_immaculate_grid(self, index_str: str) -> None:
 
-        print(result_matrix)
+        async with async_playwright() as playwright_obj:
+            async with await playwright_obj.chromium.launch(headless=False) as browser:
+                page = await browser.new_page()
+                self._logger.info(f"Navigating to {self._immaculate_grid_url + index_str}")
+                await page.goto(url=self._immaculate_grid_url + index_str, wait_until="domcontentloaded",
+                                timeout=60_000)
+                self._logger.info(f"Successfully navigated to {self._immaculate_grid_url + index_str}")
+                self._logger.info("=" * 100)
 
-        self._logger.info("=" * 100)
+                immaculate_grid_list_data: list[tuple] = []
+                column_text_list: list[str] = await self._get_column_text_list(page=page)
+                row_text_list = await self._get_row_text_list(page=page)
+
+                for row_index in range(0, 3):
+                    for column_index in range(0, len(row_text_list)):
+                        row_value_str: str = row_text_list[row_index]
+
+                        column_value_str: str = column_text_list[column_index]
+
+                        tuple_to_add: tuple = tuple([column_value_str, row_value_str])
+                        immaculate_grid_list_data.append(tuple_to_add)
+
+                immaculate_grid_answer_matrix: np.ndarray = await self._get_immaculate_grid_answer_matrix(
+                    immaculate_grid_list_data=immaculate_grid_list_data)
+
+                self._logger.info(f"immaculate_grid_answer_matrix = {immaculate_grid_answer_matrix}")
+                self._logger.info("=" * 100)
+
+                await self._insert_players_into_immaculate_grid(page=page,
+                                                                immaculate_grid_answer_matrix=immaculate_grid_answer_matrix)
+
+    async def _get_row_text_list(self, page: Page) -> list[str]:
+
+        row_text_list: list[str] = []
+
+        for row_index in range(3, 6):
+            tooltip_locator = page.locator(f'[data-testid="ig-tooltip-{row_index}"]')
+            image_locator: Locator = tooltip_locator.locator("img").first
+            img_count: int = int(await image_locator.count())
+
+            if img_count > 0:
+                grid_row_image_text: str = await image_locator.get_attribute("alt")
+                row_text_list.append(grid_row_image_text)
+            else:
+                raw_text = await self._get_text_from_grid_category(tooltip_locator=tooltip_locator)
+
+                row_text_list.append(raw_text)
+
+        return row_text_list
+
+    async def _get_column_text_list(self, page: Page) -> list[str]:
+
+        # self._logger.info("Retrieving column data")
+
+        column_text_list: list[str] = []
+
+        for column_num in range(3):
+
+            if column_num == 0:
+                await self._is_cancel_button_present(page=page)
+
+            tooltip_locator = page.locator(f'[data-testid="ig-tooltip-{column_num}"]')
+            image_locator: Locator = tooltip_locator.locator("img").first
+            img_count: int = int(await image_locator.count())
+
+            if img_count > 0:
+
+                grid_column_image_text: str = await image_locator.get_attribute("alt")
+                column_text_list.append(grid_column_image_text)
+
+            else:
+                raw_text = await self._get_text_from_grid_category(tooltip_locator=tooltip_locator)
+
+                column_text_list.append(raw_text)
+
+        return column_text_list
+
+    async def _get_text_from_grid_category(self, tooltip_locator: Locator):
+
+        text_container = tooltip_locator.locator(".font-display, .cursor-pointer").first
+        raw_text_str: str = await text_container.text_content()
+
+        return raw_text_str
+
+    async def _is_cancel_button_present(self, page: Page) -> None:
+        close_button: Locator = page.locator("#dismiss-instruction-modal-button")
+
+        if await close_button.is_visible():
+            await close_button.click()
+            # self._logger.info("Navigating away from instruction modal")
+            # self._logger.info("=" * 100)
 
     def _get_sql_condition_str(self, category_str: str, element_str: str) -> str:
 
