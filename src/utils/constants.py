@@ -126,7 +126,6 @@ class Constants:
             )
         """
 
-        # TODO: Think about connecting to franchise table
         CREATE_PLAYER_STATS_TABLE_QUERY_STR: str = """
             CREATE TABLE IF NOT EXISTS player_regular_season_stats (
                 id SERIAL PRIMARY KEY,
