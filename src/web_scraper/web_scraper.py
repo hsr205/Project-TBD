@@ -18,7 +18,7 @@ class WebScraper:
         self._draft_url: str = settings.draft_url
         self._stats_table_key: str = settings.stats_table_key
         self._data_cleanser: DataCleanser = DataCleanser()
-        self._immaculate_grid_url: str = settings.immaculate_grid_url
+
         self._logger: Logger = AppLogger.get_logger(self.__class__.__name__)
         self._player_stats_table_mapping_dict: dict[str, list[str, int]] = Constants.PLAYER_STATS_TABLE_MAPPING_DICT
 
@@ -54,7 +54,6 @@ class WebScraper:
 
         country_or_us_state_name_str = await page.locator(
             "div#meta p:has(strong:has-text('Born')) a[href*='birthplaces']").inner_text()
-
 
         if country_or_us_state_name_str in Constants.US_STATES_LIST:
             country_or_us_state_name_str = 'United States'
@@ -346,93 +345,7 @@ class WebScraper:
         self._logger.info(f"Navigating to {self._base_url}")
         await page.goto(url=self._base_url)
 
-    async def get_immaculate_grid_list_data(self, index_str: str) -> list[tuple]:
 
-        async with async_playwright() as playwright_obj:
-            async with await playwright_obj.chromium.launch(headless=False) as browser:
-                page = await browser.new_page()
-                self._logger.info(f"Navigating to {self._immaculate_grid_url + index_str}")
-                await page.goto(url=self._immaculate_grid_url + index_str, wait_until="domcontentloaded",
-                                timeout=60_000)
-                self._logger.info(f"Successfully navigated to {self._immaculate_grid_url + index_str}")
-                self._logger.info("=" * 100)
-
-                result_list: list[tuple] = []
-                column_text_list: list[str] = await self._get_column_text_list(page=page)
-                row_text_list = await self._get_row_text_list(page=page)
-
-                for row_index in range(0, 3):
-                    for column_index in range(0, len(row_text_list)):
-                        row_value_str: str = row_text_list[row_index]
-                        column_value_str: str = column_text_list[column_index]
-
-                        tuple_to_add: tuple = tuple([column_value_str, row_value_str])
-                        result_list.append(tuple_to_add)
-
-                return result_list
-
-    async def _get_row_text_list(self, page: Page) -> list[str]:
-
-        # self._logger.info("Retrieving row data")
-
-        row_text_list: list[str] = []
-
-        for row_index in range(3, 6):
-            tooltip_locator = page.locator(f'[data-testid="ig-tooltip-{row_index}"]')
-            image_locator: Locator = tooltip_locator.locator("img").first
-            img_count: int = int(await image_locator.count())
-
-            if img_count > 0:
-                grid_row_image_text: str = await image_locator.get_attribute("alt")
-                row_text_list.append(grid_row_image_text)
-            else:
-                raw_text = await self._get_text_from_grid_category(tooltip_locator=tooltip_locator)
-
-                row_text_list.append(raw_text)
-
-        return row_text_list
-
-    async def _get_column_text_list(self, page: Page) -> list[str]:
-
-        # self._logger.info("Retrieving column data")
-
-        column_text_list: list[str] = []
-
-        for column_num in range(3):
-
-            if column_num == 0:
-                await self._is_cancel_button_present(page=page)
-
-            tooltip_locator = page.locator(f'[data-testid="ig-tooltip-{column_num}"]')
-            image_locator: Locator = tooltip_locator.locator("img").first
-            img_count: int = int(await image_locator.count())
-
-            if img_count > 0:
-
-                grid_column_image_text: str = await image_locator.get_attribute("alt")
-                column_text_list.append(grid_column_image_text)
-
-            else:
-                raw_text = await self._get_text_from_grid_category(tooltip_locator=tooltip_locator)
-
-                column_text_list.append(raw_text)
-
-        return column_text_list
-
-    async def _get_text_from_grid_category(self, tooltip_locator: Locator):
-
-        text_container = tooltip_locator.locator(".font-display, .cursor-pointer").first
-        raw_text_str: str = await text_container.text_content()
-
-        return raw_text_str
-
-    async def _is_cancel_button_present(self, page: Page) -> None:
-        close_button: Locator = page.locator("#dismiss-instruction-modal-button")
-
-        if await close_button.is_visible():
-            await close_button.click()
-            # self._logger.info("Navigating away from instruction modal")
-            # self._logger.info("=" * 100)
 
     async def _navigate_to_teams_page(self, page: Page) -> None:
         await page.get_by_role(role="link", name="Teams", exact=False).first.click()
