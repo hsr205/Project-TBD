@@ -9,7 +9,8 @@ from src.logger.logger import AppLogger
 from src.utils.constants import Constants
 from src.web_scraper.web_scraper import WebScraper
 
-
+# TODO: In the event a player has already been selected and placed in the grid the player cannot be selected twice.
+#       An additional SQL query to the local database is required to find a player that has not been selected.
 class ImmaculateGrid:
 
     def __init__(self, settings: Settings) -> None:
@@ -30,7 +31,26 @@ class ImmaculateGrid:
                 await self._fill_immaculate_grid(page=page, row_int=row_int, column_int=column_int,
                                                  player_name_str=player_name_str)
 
-        # self._logger.info("=" * 100)
+        await self._display_immaculate_grid_rarity_outcome(page=page)
+
+    async def _display_immaculate_grid_rarity_outcome(self, page: Page) -> None:
+
+        received_rarity_score: float = await self._get_specified_rarity_score(page=page, text_header_str="Rarity Score")
+        average_rarity_score: float = await self._get_specified_rarity_score(page=page, text_header_str="Average Score")
+
+        self._logger.info(f"Successfully completed immaculate grid with a rarity score of: {received_rarity_score}")
+        self._logger.info(f"The average rarity score was: {average_rarity_score}")
+
+        self._logger.info("=" * 100)
+
+    async def _get_specified_rarity_score(self, page: Page, text_header_str: str) -> float:
+        metric_locator: Locator = page.locator(f"h3:has-text('{text_header_str}') ~ div .countup-wrap span")
+
+        await metric_locator.wait_for(state="visible")
+        metric_text: str = await metric_locator.inner_text()
+        metric_score = float(metric_text.strip())
+
+        return metric_score
 
     async def _fill_immaculate_grid(self, page: Page, row_int: int, column_int: int, player_name_str: str) -> None:
         # 1. Click the grid cell button using data-testid
