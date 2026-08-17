@@ -48,7 +48,6 @@ class WebScraper:
 
         return all_players_country_data_list
 
-    # TODO: Complete the following method by targeting the first section of each player's bio page
     async def _get_player_birth_data_from_player_page(self, page: Page, player_id: int) -> list[
         tuple]:
 
