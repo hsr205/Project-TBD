@@ -16,7 +16,7 @@ async def main() -> int:
 
         for index in range(0, 1_115):
             index_str: str = str(index)
-            await immaculate_grid.get_immaculate_grid_answer_matrix(index_str=index_str)
+            await immaculate_grid.complete_immaculate_grid(index_str=index_str)
 
         return 0
 
